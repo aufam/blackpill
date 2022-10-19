@@ -13,5 +13,5 @@ make flash
 
 ## flash (DFU)
 ``
-make DFU
+make dfu
 ``
