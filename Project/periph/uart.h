@@ -60,6 +60,8 @@ namespace Project::Periph {
 
         void setBaudRate(uint32_t baud);
         uint32_t getBaudRate() const;
+
+        UART &operator <<(const char *str) { writeBlocking((uint8_t *)str, strlen(str)); return *this; }
     };
 
     /// UART 2, baud rate 115200

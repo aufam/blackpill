@@ -9,7 +9,7 @@ extern char blink_symbol[16];
 void mainThread(void *arg);
 void project_init() {
     static ThreadStatic<4096> thread;
-    thread.init("Main Thread", osPriorityAboveNormal, mainThread);
+    thread.init(mainThread, nullptr, osPriorityAboveNormal, "Main Thread");
 }
 
 enum { EVENT_CLEAR, EVENT_BT_UP, EVENT_BT_DOWN, EVENT_BT_ROT, EVENT_SCROLL_UP, EVENT_SCROLL_DOWN };
@@ -19,7 +19,7 @@ Audio audio{ i2s2, AUDIO_EN_GPIO_Port, AUDIO_EN_Pin };
 Buzzer buzzer{ pwm2, TIM_CHANNEL_1, 100 };
 auto &encoder = encoder4;
 auto &uart = uart2;
-String<32> f;
+String f;
 
 struct Option {
     uint8_t col = 0, row = 0;
@@ -43,6 +43,7 @@ void menu();
     void playFromPC();
     void playSineWave();
     void testLinkedList();
+    void testBuzzer();
 
 void mainThread(void *arg) {
     (void) arg;
@@ -78,7 +79,7 @@ void mainThread(void *arg) {
                 menu
             }
     };
-    int16_t optionIndex = 1;
+    int16_t optionIndex = 0;
     const int optionIndexMax = sizeof(options) / sizeof(Option) - 1;
 
     for(;;) {
@@ -121,6 +122,7 @@ void menu() {
             { 0, 4, [](){ return f(" Play Sine Wave"); }, playSineWave },
             { 0, 5, [](){ return f(" Set Blink"); },      setBlink},
             { 0, 6, [](){ return f(" Linked List"); },    testLinkedList},
+            { 0, 7, [](){ return f(" Buzzer test"); },    testBuzzer},
     };
     int optionIndex = 0;
     const int optionIndexMax = sizeof(options) / sizeof(Option) - 1;
@@ -178,13 +180,12 @@ void encode() {
     AudioEvent audioEvent;
     audioEvent.init();
     Codec codec;
-    uint8_t bytes[9];
+    uint8_t bytes[Codec::Number::BYTES];
 
     usb.setRxCallback(
             [](void *arg, size_t) {
-                if (arg == nullptr) return;
                 auto &audioEvent = *(AudioEvent *) arg;
-                audioEvent << (Audio::Mono *) usb.rxBuffer.begin();
+                audioEvent << (AudioEvent::Type) usb.rxBuffer.begin();
             }, &audioEvent);
 
     const char *errorCodes[] = {
@@ -279,7 +280,7 @@ void playSineWave() {
     oled << " Playing sine wave...\n";
 
     int32_t toneFreq = 1000;
-    struct VCOAndVolume{
+    struct VCOAndVolume {
         VCO vco{1000, audio.i2s.sampRate};
         int volume = 1;
         bool stop = false;
@@ -299,7 +300,7 @@ void playSineWave() {
             audio.write(audioBuffer);
         }
     };
-    audioThread.init("Audio Thread", osPriorityAboveNormal, audioFn, &vcoAndVolume);
+    audioThread.init(audioFn, &vcoAndVolume, osPriorityAboveNormal, "Audio Thread");
 
     bool editMode = false;
     int index = 0;
@@ -337,7 +338,7 @@ void playSineWave() {
             case EVENT_SCROLL_DOWN:
                 if (!editMode) index--;
                 else if (index % 2 == 0) {
-                    if (toneFreq >= 500) toneFreq -= 50;
+                    if (toneFreq > 500) toneFreq -= 50;
                     vco.setDeviation(toneFreq);
                 }
                 else {
@@ -483,12 +484,17 @@ void setDate() {
 }
 
 void testLinkedList() {
-    oled << "Test linked list\n";
+    oled.setFont(TimesNewRoman16_italic);
+    oled << "\tTest linked list\n";
     LinkedList<int> list;
-    int dummy;
+    const auto rowStart = oled.row;
+    const auto columnStart = oled.column;
     for(;;) {
-        oled.setCursor(0, 1);
+        oled.setCursor(columnStart, rowStart);
         oled << f("cnt = %d\n", list.len());
+        for (size_t i = 0; i < list.len(); i++) oled << f("%d", list[i]);
+        oled << '\n';
+        oled.clearRemainingRows();
 
         int evt = EVENT_CLEAR;
         event.pop(evt, osWaitForever);
@@ -503,16 +509,77 @@ void testLinkedList() {
                 break;
             case EVENT_BT_UP:
                 buzzer.start();
-                list.pop(dummy);
+                list.pop();
                 break;
             case EVENT_BT_DOWN:
                 buzzer.start();
                 list.clear();
+                oled.setFont(Adafruit5x7);
                 return;
         }
-
-        for (auto node = list.head; node != nullptr; node = node->next) oled << f("%d ", node->item);
-        oled << '\r';
     }
+}
 
+void testBuzzer() {
+    auto period = buzzer.pwm.getPeriod();
+    const uint32_t periodMin = 100 - 1;
+    const uint32_t periodMax = 10000 - 1;
+    auto pulse = buzzer.pwm.getPulse(buzzer.channel);
+    const uint32_t pulseMin = 100;
+    const uint32_t pulseMax = 900;
+    auto &num = buzzer.nPulse;
+    const uint32_t numMin = 100;
+    const uint32_t numMax = 900;
+    bool editMode = false;
+    int index = 0;
+    const int indexMod = 3;
+    for (;;) {
+        oled.setCursor(0, 1);
+        oled.print(f("period = %ld\n", period), index % indexMod == 0);
+        oled.print(f("pulse = %ld\n", pulse), index % indexMod == 1);
+        oled.print(f("number = %ld\n", num), index % indexMod == 2);
+
+        int evt = EVENT_CLEAR;
+        event.pop(evt, osWaitForever);
+        switch (evt) {
+            default:
+            case EVENT_CLEAR: break;
+            case EVENT_BT_ROT:
+                buzzer.start();
+                editMode = !editMode;
+                break;
+            case EVENT_BT_UP:
+            case EVENT_BT_DOWN:
+                buzzer.start();
+                return;
+            case EVENT_SCROLL_UP:
+                if (!editMode) index++;
+                else if (index % indexMod == 0) {
+                    if (period < periodMax) period += 100;
+                    buzzer.pwm.setPeriod(period);
+                }
+                else if (index % indexMod == 1) {
+                    if (pulse < pulseMax) pulse += 100;
+                    buzzer.pwm.setPulse(pulse, buzzer.channel);
+                }
+                else if (index % indexMod == 2) {
+                    if (num < numMax) num += 100;
+                }
+                break;
+            case EVENT_SCROLL_DOWN:
+                if (!editMode) index--;
+                else if (index % indexMod == 0) {
+                    if (period > periodMin) period -= 100;
+                    buzzer.pwm.setPeriod(period);
+                }
+                else if (index % indexMod == 1) {
+                    if (pulse > pulseMin) pulse -= 100;
+                    buzzer.pwm.setPulse(pulse, buzzer.channel);
+                }
+                else if (index % indexMod == 2) {
+                    if (num > numMin) num -= 100;
+                }
+                break;
+        }
+    }
 }

@@ -8,8 +8,8 @@ namespace Project {
     struct Audio{
         using I2S    = Periph::I2S;
         using Buffer = I2S::Buffer;
+        using Mono   = I2S::Mono;
         using Stereo = I2S::Stereo;
-        using Mono   = int16_t;
         using BufferStereo = DSP::Buffer<Stereo, Buffer::halfLen()>;
         using BufferMono = DSP::Buffer<Mono, Buffer::halfLen()>;
         using Event = OS::QueueStatic<int, 1>;
@@ -28,6 +28,7 @@ namespace Project {
         {}
 
         void init();
+        void deinit();
         void read(BufferMono &buffer);
         void read(BufferStereo &buffer);
         void write(BufferMono &buffer);

@@ -9,12 +9,12 @@ namespace Project::Periph {
         setIncrementCB(incrementCBFn, incrementCBArg);
         setDecrementCB(decrementCBFn, decrementCBArg);
         HAL_TIM_Encoder_Start_IT(&htim, TIM_CHANNEL_ALL);
-        timer.init(
-                [](void *arg) {
-                    auto encoder = (Encoder *) arg;
-                    encoder->speed = (int16_t) (encoder->val - encoder->valPrev);
-                    encoder->valPrev = encoder->val;
-                }, 1000, this);
+        auto fn = [](void *arg) {
+            auto &encoder = *(Encoder *) arg;
+            encoder.speed = (int16_t) (encoder.val - encoder.valPrev);
+            encoder.valPrev = encoder.val;
+        };
+        timer.init(1000, fn, this);
     }
 
     void Encoder::deinit() {

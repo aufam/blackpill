@@ -16,8 +16,14 @@ namespace Project {
         speakerDisable();
     }
 
-    void Audio::read(Audio::BufferMono &buffer) {
-        if (event.getCount() > 0) event.clear();
+    void Audio::deinit() {
+        i2s.deinit();
+        event.deinit();
+        speakerDisable();
+    }
+
+    void Audio::read(BufferMono &buffer) {
+        if (event) event.clear();
 
         int evt = EVENT_CLEAR;
         event.pop(evt, osWaitForever);
@@ -27,8 +33,8 @@ namespace Project {
         for (size_t i = 0; i < Buffer::halfLen(); i++) buffer[i] = stereo[i].left;
     }
 
-    void Audio::read(Audio::BufferStereo &buffer) {
-        if (event.getCount() > 0) event.clear();
+    void Audio::read(BufferStereo &buffer) {
+        if (event) event.clear();
 
         int evt = EVENT_CLEAR;
         event.pop(evt, osWaitForever);
@@ -38,8 +44,8 @@ namespace Project {
         for (size_t i = 0; i < Buffer::halfLen(); i++) buffer[i] = stereo[i];
     }
 
-    void Audio::write(Audio::BufferMono &buffer) {
-        if (event.getCount() > 0) event.clear();
+    void Audio::write(BufferMono &buffer) {
+        if (event) event.clear();
 
         int evt = EVENT_CLEAR;
         event.pop(evt, osWaitForever);
@@ -49,8 +55,8 @@ namespace Project {
         for (size_t i = 0; i < Buffer::halfLen(); i++) stereo[i].left = buffer[i];
     }
 
-    void Audio::write(Audio::BufferStereo &buffer) {
-        if (event.getCount() > 0) event.clear();
+    void Audio::write(BufferStereo &buffer) {
+        if (event) event.clear();
 
         int evt = EVENT_CLEAR;
         event.pop(evt, osWaitForever);

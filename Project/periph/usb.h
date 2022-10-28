@@ -34,6 +34,8 @@ namespace Project::Periph {
         /// @param len buffer length
         /// @retval USBD_StatusTypeDef (see usbd_def.h)
         int transmit(const void *buf, uint16_t len);
+
+        USB &operator << (const char *str) { transmit(str, strlen(str)); return *this; }
     };
 
     extern USB usb;

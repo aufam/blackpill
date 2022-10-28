@@ -14,9 +14,10 @@ namespace Project::Periph {
             Function fn;
             void *arg;
         };
-        struct Stereo { int16_t left, right; };
+        typedef int16_t Mono;
+        struct Stereo { Mono left, right; };
         using Buffer = DSP::BufferDouble<Stereo, 160 * 2>; ///< buffer type definition, stereo, dual buffer
-        static const size_t nChannels = 2; ///< I2S standard is 2 channels
+        static const size_t nChannels = 2; ///< I2S standard is 2 channels (stereo)
 
         I2S_HandleTypeDef &hi2s; ///< I2S handler configured in cubeMX
         const size_t sampRate; ///< configured in cubeMX

@@ -12,17 +12,15 @@ namespace Project::OS {
         osThreadId_t id;
         constexpr Thread() : id(nullptr) {}
 
-        void init(
-                uint32_t stacksize,
-                const char *name,
-                osPriority_t prio,
-                Function fn,
-                void *arg = nullptr
-        ) {
+        void init(Function fn, void *arg = nullptr,
+                  osPriority_t prio = osPriorityNormal,
+                  uint32_t stacksize = 128,
+                  const char *name = nullptr)
+        {
             if (id) return;
             osThreadAttr_t attr = {};
             attr.name = name;
-            attr.stack_size = stacksize * 4; // word size
+            attr.stack_size = stacksize * 4; // in byte
             attr.priority = prio;
             id = osThreadNew(fn, arg, &attr);
         }
@@ -34,25 +32,23 @@ namespace Project::OS {
     };
 
     /// static OS thread. requirements cmsis os v2
-    template <size_t N>
+    template <size_t N = 128>
     struct ThreadStatic : public Thread {
         uint32_t buffer[N];
         StaticTask_t controlblock;
-        constexpr ThreadStatic() : Thread(), buffer{0}, controlblock{} {}
+        constexpr ThreadStatic() : Thread(), buffer{}, controlblock{} {}
 
-        void init(
-                const char *name,
-                osPriority_t prio,
-                Function fn,
-                void *arg = nullptr
-        ) {
+        void init(Function fn, void *arg = nullptr,
+                  osPriority_t prio = osPriorityNormal,
+                  const char *name = nullptr)
+        {
             if (id) return;
             osThreadAttr_t attr = {};
             attr.name = name;
             attr.cb_mem = &controlblock;
             attr.cb_size = sizeof(controlblock);
             attr.stack_mem = buffer;
-            attr.stack_size = sizeof(buffer); // word size
+            attr.stack_size = sizeof(buffer); // in byte
             attr.priority = prio;
             id = osThreadNew(fn, arg, &attr);
         }
@@ -75,8 +71,8 @@ namespace Project::OS {
             if (osMutexDelete(id) == osOK) id = nullptr;
         }
 
-        auto lock(uint32_t wait_ms = osWaitForever) const { return osMutexAcquire(id, wait_ms); }
-        auto unlock() const                               { return osMutexRelease(id); }
+        int lock(uint32_t wait_ms = osWaitForever) const { return osMutexAcquire(id, wait_ms); }
+        int unlock() const                               { return osMutexRelease(id); }
     };
 
     /// static OS mutex. requirements cmsis os v2
@@ -100,14 +96,12 @@ namespace Project::OS {
         osTimerId_t id;
         constexpr Timer() : id(nullptr) {}
 
-        void init(
-                Function fn,
-                uint32_t interval,
-                void *arg = nullptr,
-                osTimerType_t type = osTimerPeriodic,
-                const char *name = nullptr,
-                int start_now = 1
-        ) {
+        void init(uint32_t interval,
+                  Function fn, void *arg = nullptr,
+                  osTimerType_t type = osTimerPeriodic,
+                  const char *name = nullptr,
+                  bool start_now = true)
+        {
             if (id) return;
             osTimerAttr_t attr = {};
             attr.name = name;
@@ -120,9 +114,9 @@ namespace Project::OS {
             if (osTimerDelete(id) == osOK) id = nullptr;
         }
 
-        auto start(uint32_t interval) const   { return osTimerStart(id, interval); }
-        auto stop() const                     { return osTimerStop(id); }
-        auto isRunning() const               { return osTimerIsRunning(id); }
+        int start(uint32_t interval) const   { return osTimerStart(id, interval); }
+        int stop() const                     { return osTimerStop(id); }
+        bool isRunning() const               { return osTimerIsRunning(id); }
     };
 
     /// static OS timer. requirements cmsis os v2
@@ -130,14 +124,12 @@ namespace Project::OS {
         StaticTimer_t controlblock;
         constexpr TimerStatic() : Timer(), controlblock{} {}
 
-        void init(
-                Function fn,
-                uint32_t interval,
-                void *arg = nullptr,
-                osTimerType_t type = osTimerPeriodic,
-                const char *name = nullptr,
-                int start_now = 1
-        ) {
+        void init(uint32_t interval,
+                  Function fn, void *arg = nullptr,
+                  osTimerType_t type = osTimerPeriodic,
+                  const char *name = nullptr,
+                  bool start_now = true)
+        {
             if (id) return;
             osTimerAttr_t attr = {};
             attr.name = name;
@@ -155,11 +147,11 @@ namespace Project::OS {
         osMessageQueueId_t id;
         constexpr Queue() : id(nullptr) {}
 
-        void init(int32_t max_len, const char *name = nullptr) {
+        void init(int32_t capacity, const char *name = nullptr) {
             if (id) return;
             osMessageQueueAttr_t attr = {};
             attr.name = name;
-            id = osMessageQueueNew(max_len, sizeof(T), &attr);
+            id = osMessageQueueNew(capacity, sizeof(T), &attr);
         }
 
         void deinit() {
@@ -172,18 +164,18 @@ namespace Project::OS {
         /// @param[out] wait_ms wait in ms
         /// @param[in] prio priority level
         /// @retval osStatus_t, see cmsis_os2.h
-        auto push(const T &item, uint32_t wait_ms = 0, uint8_t prio = 0) {
+        int push(const T &item, uint32_t wait_ms = 0, uint8_t prio = 0) {
             return osMessageQueuePut(id, &item, prio, wait_ms);
         }
-        /// pop an item from the queue
+        /// pop first item from the queue
         /// @param[out] item the item
         /// @param[in] wait_ms wait in ms
         /// @param[out] prio priority level
         /// @retval osStatus_t, see cmsis_os2.h
-        auto pop(T &item, uint32_t wait_ms = 0, uint8_t *prio = nullptr) {
+        int pop(T &item, uint32_t wait_ms = 0, uint8_t *prio = nullptr) {
             return osMessageQueueGet(id, &item, prio, wait_ms);
         }
-        auto clear()        { return osMessageQueueReset(id); }
+        int clear()        { return osMessageQueueReset(id); }
         auto getSpace()     { return osMessageQueueGetSpace(id); }
         auto getCount()     { return osMessageQueueGetCount(id); }
         auto getCapacity()  { return osMessageQueueGetCapacity(id); }
@@ -213,8 +205,10 @@ namespace Project::OS {
         }
     };
 
+    /// linked list. requirements: cmsis os v2
     template <class T>
     struct LinkedList {
+        typedef T Type;
         struct Node {
             T item;
             Node *next;
@@ -222,6 +216,7 @@ namespace Project::OS {
         Node *head;
         constexpr LinkedList() : head(nullptr) {}
 
+        /// find tail
         Node *tail() {
             auto node = head;
             if (node == nullptr) return node;
@@ -229,14 +224,18 @@ namespace Project::OS {
             return node;
         }
 
+        /// number of item in the list
         size_t len() {
             size_t cnt = 0;
             for (auto node = head; node != nullptr; node = node->next) cnt++;
             return cnt;
         }
 
+        /// push an item to the queue
+        /// @param[in] item item
+        /// @retval osStatus_t, see cmsis_os2.h
         int push(const T &item) {
-            auto node = (Node *) pvPortMalloc(sizeof(Node));
+            auto node = new Node;
             if (node == nullptr) return osError;
             node->item = item;
             node->next = nullptr;
@@ -245,23 +244,30 @@ namespace Project::OS {
             return osOK;
         }
 
+        /// get the first item and delete it from the list
+        /// @param[out] item item
+        /// @retval osStatus_t, see cmsis_os2.h
         int pop(T &item) {
             auto node = head;
             if (node == nullptr) return osError;
             item = node->item;
             head = node->next;
-            vPortFree(node);
+            delete node;
             return osOK;
         }
 
-        void clear() {
-            for (T dummy; head != nullptr; ) pop(dummy);
-        }
+        /// delete the first item from the list
+        /// @retval osStatus_t, see cmsis_os2.h
+        int pop() { T dummy; return pop(dummy); }
+
+        /// delete all items in the list
+        void clear() { while (head != nullptr) pop(); }
 
         LinkedList<T> &operator << (const T &item) { push(item); return *this; }
         LinkedList<T> &operator >> (T &item)       { pop(item); return *this; }
         explicit operator bool ()                  { return head != nullptr;}
 
+        /// get the copy of n-th item from the list
         T operator [](size_t index) {
             auto node = head;
             if (node == nullptr) return T{};

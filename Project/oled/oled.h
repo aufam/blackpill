@@ -39,28 +39,37 @@ namespace Project {
         /// clear selected region and set cursor to columnStart and rowStart
         void clear(uint8_t columnStart = 0, uint8_t rowStart = 0,
                    uint8_t columnEnd = 0xFF, uint8_t rowEnd = 0xFF, bool invertColor = false);
+        void clearRemainingRows(bool invertColor = false) {
+            clear(column, row, screenWidth() - 1, screenRows() - 1, invertColor);
+        }
         /// set column: 0 to screen_width - 1
         void setColumn(uint8_t newColumn);
         /// set row: 0 to (screen_height / 8) - 1
         void setRow(uint8_t newRow);
+
         /// set column and row
         void setCursor(uint8_t newColumn, uint8_t newRow) {
             setColumn(newColumn);
             setRow(newRow);
         }
-
         /// print one char
-        /// @retval 0 = success, -1 = font is null, 1 = ch is not in font, 2 = column exceeds screen width
+        /// @retval 0 = success, -1 = error font is null, -2 = column exceeds screen width, 1 = ch is not in font
         int print(char ch, bool invertColor = false);
         /// print string terminated with '\0'
-        void print(const char *str, bool invertColor = false, uint8_t columnStart = 0xFF, uint8_t rowStart = 0xFF);
+        /// @retval 0 = success, -1 = error font is null
+        int print(const char *str, bool invertColor = false, uint8_t columnStart = 0xFF, uint8_t rowStart = 0xFF);
 
-        Oled &operator<<(char ch)           { print(ch); return *this; }
         Oled &operator<<(const char *str)   { print(str); return *this; }
+        Oled &operator<<(char ch) {
+            if (print(ch) != -2) return *this;
+            if (row + fontRows() >= screenRows()) return *this; // last row
+            setCursor(0, row + fontRows());
+            return *this;
+        }
 
         uint8_t screenWidth() const     { return device.lcdWidth; }
         uint8_t screenHeight() const    { return device.lcdHeight; }
-        uint8_t screenRows() const      { return device.lcdHeight / 8; }
+        uint8_t screenRows() const      { return screenHeight() / 8; }
         uint8_t columnOffset() const    { return device.colOffset; }
 
         /// set new font, see fonts/allFonts.h

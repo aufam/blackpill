@@ -4,7 +4,7 @@ namespace Project::Periph {
 
     void RealTimeClock::init() {
         update();
-        timer.init([](void *arg) { auto *rtc = (RealTimeClock *) arg; rtc->update(); }, 1000, this);
+        timer.init(1000, [](void *arg) { auto rtc = (RealTimeClock *) arg; rtc->update(); }, this);
     }
 
     void RealTimeClock::deinit() {
