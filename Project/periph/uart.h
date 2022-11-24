@@ -87,7 +87,7 @@ namespace Project::Periph {
         UART &operator <<(const char *str) { writeBlocking((uint8_t *)str, strlen(str)); return *this; }
     };
 
-    /// UART 2, baud rate 115200
+    /// UART 2, baud rate 460800
     inline UART uart2(huart2);
 
 } // namespace Project
