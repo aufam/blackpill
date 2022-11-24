@@ -2,7 +2,7 @@
 #define PROJECT_ENCODER_H
 
 #include "tim.h"
-#include "os.h"
+#include "etl/timer.h"
 
 namespace Project::Periph {
 
@@ -19,18 +19,32 @@ namespace Project::Periph {
         int16_t val = 0; ///< current value
         int16_t valPrev = 0; ///< previous value
         int16_t speed = 0;
-        OS::TimerStatic timer;
+        etl::Timer timer;
         Callback incrementCB = {};
         Callback decrementCB = {};
         constexpr explicit Encoder(TIM_HandleTypeDef &htim) : htim(htim) {}
 
         /// set callback, init os timer, and start encoder
-        void init(
-                Callback::Function incrementCBFn = nullptr, void *incrementCBArg = nullptr,
-                Callback::Function decrementCBFn = nullptr, void *decrementCBArg = nullptr
-        );
+        void init(Callback::Function incrementCBFn = nullptr, void *incrementCBArg = nullptr,
+                  Callback::Function decrementCBFn = nullptr, void *decrementCBArg = nullptr)
+        {
+            setIncrementCB(incrementCBFn, incrementCBArg);
+            setDecrementCB(decrementCBFn, decrementCBArg);
+            HAL_TIM_Encoder_Start_IT(&htim, TIM_CHANNEL_ALL);
+            auto fn = [](void *arg) {
+                auto &encoder = *(Encoder *) arg;
+                encoder.speed = (int16_t) (encoder.val - encoder.valPrev);
+                encoder.valPrev = encoder.val;
+            };
+            timer.init(1000, fn, this);
+        }
+
         /// deinit os timer, and stop encoder
-        void deinit();
+        void deinit() {
+            HAL_TIM_Encoder_Stop_IT(&htim, TIM_CHANNEL_ALL);
+            timer.deinit();
+        }
+
         /// set increment callback
         /// @param incrementCBFn increment callback function pointer
         /// @param incrementCBArg increment callback function argument
@@ -38,12 +52,21 @@ namespace Project::Periph {
             incrementCB.fn = incrementCBFn;
             incrementCB.arg = incrementCBArg;
         }
+
         /// set decrement callback
         /// @param decrementCBFn decrement callback function pointer
         /// @param decrementCBArg decrement callback function argument
         void setDecrementCB(Callback::Function decrementCBFn = nullptr, void *decrementCBArg = nullptr) {
             decrementCB.fn = decrementCBFn;
             decrementCB.arg = decrementCBArg;
+        }
+
+        void inputCaptureCallback() {
+            uint16_t counter = htim.Instance->CNT;
+            int cnt = counter / 4;
+            if (incrementCB.fn && cnt > val) incrementCB.fn(incrementCB.arg);
+            if (decrementCB.fn && cnt < val) decrementCB.fn(decrementCB.arg);
+            val = (int16_t) cnt;
         }
     };
 

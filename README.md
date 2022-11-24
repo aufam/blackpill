@@ -1,17 +1,21 @@
 # Development STM32F4 blackpill using CubeMx
-You can modify ioc file and Project/periph to suit your needs.
+
+Main program is in [project.cc](Project/project.cc).
+You can modify ioc file and [periph](Project/periph) folder to suit your needs.
 
 ## Build
-``
-make
-``
+````
+mkdir build
+cmake -B build
+make -C build
+````
 
 ## flash (st-link)
-``
-make flash
-``
+````
+make flash -C build
+````
 
 ## flash (DFU)
-``
-make dfu
-``
+````
+make dfu -C build
+````

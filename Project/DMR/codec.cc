@@ -1,43 +1,41 @@
-
 #include "codec.h"
 #include "ambe_engine/ambe3600x2450_const.h"
 
-namespace Project {
+namespace Project::DMR {
 
-    Codec::Codec() :
-            vocoder(),
-            mbe_now{},
-            mbe_prv{},
-            mbe_enh{},
-            gain_adjust(2.5f),
-            error(0),
-            error2(0),
-            error_str{},
-            data{}
-    {
+    Codec::Codec()
+    : vocoder()
+    , mbe_now{}
+    , mbe_prv{}
+    , mbe_enh{}
+    , gain_adjust(2.5f)
+    , error(0)
+    , error2(0)
+    , error_str{}
+    , data{} {
         mbe_initMbeParms(&mbe_now, &mbe_prv, &mbe_enh);
     }
 
-    void Codec::encode(const int16_t *audiosamp_in, uint8_t *bytes_out) {
+    void Codec::encode(const int16_t *audio_in, uint8_t *bytes_out) {
         int16_t dummy[8] = {};
-        int b[Number::BYTES] = {};
-        uint8_t codeword[Number::BYTES * 8] = {};
-        uint8_t bytes_in[Number::BYTES] = {};
+        int b[N_BYTES] = {};
+        uint8_t codeword[N_BYTES * 8] = {};
+        uint8_t bytes_in[N_BYTES] = {};
 
         // first do speech analysis to generate mbe model parameters
-        vocoder.imbe_encode(dummy, audiosamp_in);
-        // halfrate audio encoding - output rate is 2450 (49 bits)
+        vocoder.imbe_encode(dummy, audio_in);
+        // half rate audio encoding - output rate is 2450 (49 bits)
         encode_ambe(b);
         encode_49bit(codeword, b);
-        for(uint32_t i = 0; i < Number::BYTES; ++i)
+        for(uint32_t i = 0; i < N_BYTES; ++i)
             for(int j = 0; j < 8; ++j)
                 bytes_in[i] |= (codeword[(i*8)+j] << (7-j));
         // add FEC and interleaving - output rate is 3600 (72 bits)
         encode_dmr(bytes_in, bytes_out);
     }
 
-    void Codec::decode(const uint8_t *bytes_in, int16_t *audiosamp_out) {
-        char frame[4][24] = {{0}};
+    void Codec::decode(const uint8_t *bytes_in, int16_t *audio_out) {
+        char frame[4][24] = {};
 
         static const int rW[36] = {
             0, 1, 0, 1, 0, 1,
@@ -83,18 +81,18 @@ namespace Project {
             }
         }
 
-        float audiosamp_f[Number::SAMPLES];
+        float audio[N_SAMPLES];
         mbe_processAmbe3600x2450Framef(
-            audiosamp_f,
-            &error, &error2, error_str,
-            frame, data,
-            &this->mbe_now, &this->mbe_prv, &this->mbe_enh, 3);
+                audio,
+                &error, &error2, error_str,
+                frame, data,
+                &this->mbe_now, &this->mbe_prv, &this->mbe_enh, 3);
 
-        for (uint32_t i = 0; i < Number::SAMPLES; i++)
-            audiosamp_out[i] = (int16_t)audiosamp_f[i];
+        for (uint32_t i = 0; i < N_SAMPLES; i++)
+            audio_out[i] = (int16_t)audio[i];
     }
 
-    // * private methods
+    /* private methods */
 
     void Codec::encode_ambe(int *b) {
         static const short b0_lookup[] = {

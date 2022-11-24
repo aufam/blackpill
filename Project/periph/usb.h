@@ -2,7 +2,7 @@
 #define PROJECT_PERIPH_USB_H
 
 #include "usbd_cdc_if.h"
-#include "dsp/buffer.h"
+#include "etl/array.h"
 
 namespace Project::Periph {
 
@@ -14,7 +14,7 @@ namespace Project::Periph {
             Function fn;
             void *arg;
         };
-        using Buffer = DSP::Buffer<uint8_t, APP_RX_DATA_SIZE>; ///< USB rx buffer type definition
+        using Buffer = etl::Array<uint8_t, APP_RX_DATA_SIZE>; ///< USB rx buffer type definition
 
         Callback rxCallback = {};
         Callback txCallback = {};
@@ -24,17 +24,28 @@ namespace Project::Periph {
         /// set rx callback
         /// @param rxCBFn receive callback function pointer
         /// @param rxCBArg receive callback function argument
-        void setRxCallback(Callback::Function rxCBFn, void *rxCBArg = nullptr);
+        void setRxCallback(Callback::Function rxCBFn, void *rxCBArg = nullptr) {
+            rxCallback.fn  = rxCBFn;
+            rxCallback.arg = rxCBArg;
+        }
+
         /// set tx callback
         /// @param txCBFn transmit callback function pointer
         /// @param txCBArg transmit callback function argument
-        void setTxCallback(Callback::Function txCBFn, void *txCBArg = nullptr);
+        void setTxCallback(Callback::Function txCBFn, void *txCBArg = nullptr) {
+            txCallback.fn  = txCBFn;
+            txCallback.arg = txCBArg;
+        }
+
         /// USB transmit non blocking
         /// @param buf data buffer
         /// @param len buffer length
         /// @retval USBD_StatusTypeDef (see usbd_def.h)
-        int transmit(const void *buf, uint16_t len);
+        int transmit(const void *buf, uint16_t len) {
+            return CDC_Transmit_FS((uint8_t *)buf, len);
+        }
 
+        /// operator write string
         USB &operator << (const char *str) { transmit(str, strlen(str)); return *this; }
     };
 

@@ -2,24 +2,27 @@
 
 using namespace Project;
 using namespace Project::Periph;
-using namespace Project::OS;
+using namespace Project::etl;
 using namespace Project::DSP;
-extern char blink_symbol[16];
 
 void mainThread(void *arg);
 void project_init() {
-    static ThreadStatic<4096> thread;
+    static Thread<4096> thread;
     thread.init(mainThread, nullptr, osPriorityAboveNormal, "Main Thread");
 }
 
 enum { EVENT_CLEAR, EVENT_BT_UP, EVENT_BT_DOWN, EVENT_BT_ROT, EVENT_SCROLL_UP, EVENT_SCROLL_DOWN };
-QueueStatic<int, 1> event;
-Oled oled{ i2c1 };
-Audio audio{ i2s2, AUDIO_EN_GPIO_Port, AUDIO_EN_Pin };
-Buzzer buzzer{ pwm2, TIM_CHANNEL_1, 100 };
+auto event = Queue<int, 1> {};
+auto oled = Oled { i2c1 };
+auto audio = Audio { i2s2, AUDIO_EN_GPIO_Port, AUDIO_EN_Pin };
 auto &encoder = encoder4;
+
 auto &uart = uart2;
-String f;
+auto f = String{};
+
+auto &buzzer = pwm2channel1;
+uint32_t buzzerDuration = 300;
+uint32_t buzzerCnt = 0;
 
 struct Option {
     uint8_t col = 0, row = 0;
@@ -51,16 +54,26 @@ void mainThread(void *arg) {
     exti.setCallback(SW_A_Pin, [](void *) { event << EVENT_BT_UP; });
     exti.setCallback(SW_B_Pin, [](void *) { event << EVENT_BT_DOWN; });
     exti.setCallback(SW_ROT_Pin, [](void *) { event << EVENT_BT_ROT; });
-    encoder.init(
-            [](void *){ event << EVENT_SCROLL_UP; }, nullptr,
-            [](void *){ event << EVENT_SCROLL_DOWN; }, nullptr);
+    encoder.init([](void *){ event << EVENT_SCROLL_UP; }, nullptr,
+                 [](void *){ event << EVENT_SCROLL_DOWN; }, nullptr);
 
     rtc.init();
     event.init();
     oled.init();
     audio.init();
     uart.init();
-    buzzer.init(SystemCoreClock / 1_M - 1, 1_k - 1, 500);
+
+    auto buzzerFullCBFn = [](void*) {
+        buzzerCnt++;
+        if (buzzerCnt < buzzerDuration) return;
+        buzzer.stop();
+        buzzerCnt = 0;
+    };
+    buzzer.init(SystemCoreClock / 1_M - 1, 1_k - 1, 500,
+                nullptr, nullptr, buzzerFullCBFn, nullptr);
+
+    usb.setRxCallback([](void *, size_t len) { uart.write(usb.rxBuffer.data(), len); });
+    uart.setRxCallback([](void *, size_t len) { usb.transmit(uart.rxBuffer.data(), len); });
 
     const Option options[] = {
             /* clock */ {
@@ -159,7 +172,7 @@ void record() {
     auto &audioBuffer = *(Audio::BufferMono *) &usb.rxBuffer;
     for (;;) {
         audio.read(audioBuffer);
-        usb.transmit(audioBuffer.data(), Audio::BufferMono::len() * sizeof (Audio::Mono));
+        usb.transmit(audioBuffer.data(), Audio::BufferMono::size() * sizeof (Audio::Mono));
 
         int evt = EVENT_CLEAR;
         event >> evt;
@@ -176,17 +189,15 @@ void record() {
 void encode() {
     oled << " Encode incoming audio data from PC and send to PC\n";
 
-    using AudioEvent = QueueStatic<Audio::Mono *, 1>;
+    using AudioEvent = Queue<Audio::Mono *, 1>;
     AudioEvent audioEvent;
     audioEvent.init();
-    Codec codec;
-    uint8_t bytes[Codec::Number::BYTES];
+    DMR::Codec codec;
+    uint8_t bytes[DMR::Codec::N_BYTES];
 
-    usb.setRxCallback(
-            [](void *arg, size_t) {
-                auto &audioEvent = *(AudioEvent *) arg;
-                audioEvent << (AudioEvent::Type) usb.rxBuffer.begin();
-            }, &audioEvent);
+    auto usbRxCB = usb.rxCallback;
+    usb.setRxCallback([](void *arg, size_t) { (*(AudioEvent *) arg) << (AudioEvent::Type) usb.rxBuffer.begin(); },
+                      &audioEvent);
 
     const char *errorCodes[] = {
             "No error",
@@ -216,7 +227,7 @@ void encode() {
             case EVENT_BT_UP:
             case EVENT_BT_DOWN:
                 buzzer.start();
-                usb.setRxCallback(nullptr); // reset rx callback
+                usb.rxCallback = usbRxCB; // reset rx callback
                 audioEvent.deinit();
                 return;
         }
@@ -226,17 +237,19 @@ void encode() {
 void encodeTest() {
     oled << " Test MBE Encode...\n";
 
-    Codec codec;
-    uint8_t bytes[9];
+    DMR::Codec codec;
+    uint8_t bytes[DMR::Codec::N_BYTES];
     auto &audioBuffer = *(Audio::BufferMono *) &usb.rxBuffer;
 
+    uint32_t cnt = 0;
     for (;;) {
         audio.read(audioBuffer);
 
         auto start = osKernelGetTickCount();
         codec.encode(audioBuffer.data(), bytes);
         auto end = osKernelGetTickCount();
-        oled << f("Time elapsed: %ld ms\r", end - start);
+        oled.setCursor(0, 1);
+        oled << f("%d, Time elapsed: %ld ms\r", cnt++, end - start);
 
         int evt = EVENT_CLEAR;
         event >> evt;
@@ -281,21 +294,21 @@ void playSineWave() {
 
     int32_t toneFreq = 1000;
     struct VCOAndVolume {
-        VCO vco{1000, audio.i2s.sampRate};
+        VCO vco{1000, audio.i2s.audioRate};
         int volume = 1;
         bool stop = false;
     } vcoAndVolume;
     auto &vco = vcoAndVolume.vco;
     auto &volume = vcoAndVolume.volume;
 
-    ThreadStatic<128> audioThread;
+    Thread audioThread;
     auto audioFn = [](void *arg) {
         auto vcoAndVolume = (VCOAndVolume *) arg;
         auto &vco = vcoAndVolume->vco;
         auto &volume = vcoAndVolume->volume;
         auto &audioBuffer = *(Audio::BufferMono *) &usb.rxBuffer;
         for (; !vcoAndVolume->stop;) {
-            for (size_t i = 0; i < Audio::BufferMono::len(); ++vco, i++)
+            for (size_t i = 0; i < Audio::BufferMono::size(); ++vco, i++)
                 audioBuffer[i] = (int16_t) (vco.sin().i * 0x100 * volume / 100);
             audio.write(audioBuffer);
         }
@@ -350,9 +363,9 @@ void playSineWave() {
 }
 
 void setBlink() {
-    const int sizeofBlinkSymbols = sizeof(blink_symbol);
+    const int sizeofBlinkSymbols = sizeof(blinkSymbols);
     char blinkSymbols[sizeofBlinkSymbols];
-    strcpy(blinkSymbols, blink_symbol);
+    strcpy(blinkSymbols, blinkSymbols);
     const char optionSymbols[] = {'\0', '0', '1'};
     const int optionSymbolsIndexMax = sizeof(optionSymbols) - 1;
     int index = 0;
@@ -391,7 +404,7 @@ void setBlink() {
             case EVENT_BT_UP:
             case EVENT_BT_DOWN:
                 buzzer.start();
-                strcpy(blink_symbol, blinkSymbols);
+                strcpy(blinkSymbols, blinkSymbols);
                 return;
         }
     }
@@ -521,13 +534,13 @@ void testLinkedList() {
 }
 
 void testBuzzer() {
-    auto period = buzzer.pwm.getPeriod();
+    auto period = buzzer.getPeriod();
     const uint32_t periodMin = 100 - 1;
     const uint32_t periodMax = 10000 - 1;
-    auto pulse = buzzer.pwm.getPulse(buzzer.channel);
+    auto pulse = buzzer.getPulse();
     const uint32_t pulseMin = 100;
     const uint32_t pulseMax = 900;
-    auto &num = buzzer.nPulse;
+    auto &num = buzzerDuration;
     const uint32_t numMin = 100;
     const uint32_t numMax = 900;
     bool editMode = false;
@@ -556,11 +569,11 @@ void testBuzzer() {
                 if (!editMode) index++;
                 else if (index % indexMod == 0) {
                     if (period < periodMax) period += 100;
-                    buzzer.pwm.setPeriod(period);
+                    buzzer.setPeriod(period);
                 }
                 else if (index % indexMod == 1) {
                     if (pulse < pulseMax) pulse += 100;
-                    buzzer.pwm.setPulse(pulse, buzzer.channel);
+                    buzzer.setPulse(pulse);
                 }
                 else if (index % indexMod == 2) {
                     if (num < numMax) num += 100;
@@ -570,11 +583,11 @@ void testBuzzer() {
                 if (!editMode) index--;
                 else if (index % indexMod == 0) {
                     if (period > periodMin) period -= 100;
-                    buzzer.pwm.setPeriod(period);
+                    buzzer.setPeriod(period);
                 }
                 else if (index % indexMod == 1) {
                     if (pulse > pulseMin) pulse -= 100;
-                    buzzer.pwm.setPulse(pulse, buzzer.channel);
+                    buzzer.setPulse(pulse);
                 }
                 else if (index % indexMod == 2) {
                     if (num > numMin) num -= 100;

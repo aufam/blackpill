@@ -2,11 +2,12 @@
 #define PROJECT_OLED_OLED_H
 
 #include "periph/i2c.h"
-#include "SSD1306init.h"
-#include "fonts/allFonts.h"
+#include "oled/SSD1306init.h"
+#include "oled/fonts/allFonts.h"
 
 namespace Project {
 
+    /// OLED driver (text only). requirements: I2C class, I2C clock speed 400k
     struct Oled {
         enum { ID_CMD = 0x00u, ID_DATA = 0x40u };
         typedef const uint8_t *Font;
@@ -18,17 +19,15 @@ namespace Project {
         uint8_t slaveAddr;
         uint8_t column, row;
 
-        constexpr explicit Oled(
-                Periph::I2C &i2c,
-                Font font = Adafruit5x7,
-                DeviceType device = Adafruit128x64,
-                uint8_t slaveAddr = 0x78)
-                : i2c(i2c)
-                , font(font)
-                , device(device)
-                , slaveAddr(slaveAddr)
-                , column(0), row(0)
-        {}
+        constexpr explicit Oled(Periph::I2C &i2c,
+                                Font font = Adafruit5x7,
+                                DeviceType device = Adafruit128x64,
+                                uint8_t slaveAddr = 0x78)
+        : i2c(i2c)
+        , font(font)
+        , device(device)
+        , slaveAddr(slaveAddr)
+        , column(0), row(0) {}
 
         void init(); ///< write initial commands and clear the screen
         void deinit();

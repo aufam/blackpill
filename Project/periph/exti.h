@@ -22,7 +22,14 @@ namespace Project::Periph {
         /// @param pin GPIO_PIN_X see stm32fXxx_hal_gpio.h
         /// @param fn function pointer
         /// @param arg function argument
-        void setCallback(uint16_t pin, Callback::Function fn = nullptr, void *arg = nullptr);
+        void setCallback(uint16_t pin, Callback::Function fn = nullptr, void *arg = nullptr) {
+            size_t index = 0;
+            for (uint32_t b = 1; index < 16; index++)
+                if ((b << index) & pin) {
+                    callbacks[index].fn = fn;
+                    callbacks[index].arg = arg;
+                }
+        }
     };
 
     inline Exti exti;

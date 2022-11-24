@@ -2,29 +2,14 @@
 #define PROJECT_BUFFER_H
 
 #include "main.h"
-#include "os.h"
+#include "etl/array.h"
 #include <cstring> // memcpy
 
 namespace Project::DSP {
 
     /// Buffer class
     template <class T, size_t N>
-    struct Buffer {
-        typedef T Type;
-        T buf[N];
-        constexpr Buffer() : buf{} {}
-
-        static constexpr size_t len()       { return N; }
-        constexpr T *data()                 { return buf; }
-        constexpr T *begin()                { return buf; }
-        constexpr T *end()                  { return buf + N; }
-        constexpr T &operator [](size_t i)  { return buf[min(i, N)]; }
-
-        void fill(const T &val, size_t n = N) {
-            n = min(n, N);
-            for (size_t i = 0; i < n; i++) buf[i] = val;
-        }
-
+    struct Buffer : etl::Array<T, N> {
     protected:
         static constexpr size_t min(size_t a, size_t b) { return a < b ? a : b; }
     };
@@ -52,12 +37,12 @@ namespace Project::DSP {
             if (nItems == 0) return 0;
 
             n = this->min((N - indexWrite), nItems);
-            memcpy(this->buf + indexWrite, items, n * sizeof(T));
+            memcpy(this->buffer + indexWrite, items, n * sizeof(T));
             indexWrite += n;
             nItems -= n;
 
             if (nItems > 0) {
-                memcpy(this->buf, items + n, nItems * sizeof(T));
+                memcpy(this->buffer, items + n, nItems * sizeof(T));
                 indexWrite = nItems;
             }
 
@@ -71,12 +56,12 @@ namespace Project::DSP {
             if (nItems == 0) return 0;
 
             n = this->min((N - indexRead), nItems);
-            memcpy(items, this->buf + indexRead, n * sizeof(T));
+            memcpy(items, this->buffer + indexRead, n * sizeof(T));
             indexRead += n;
             nItems -= n;
 
             if (nItems > 0) {
-                memcpy(items + n, this->buf, nItems * sizeof(T));
+                memcpy(items + n, this->buffer, nItems * sizeof(T));
                 indexRead = nItems;
             }
 
@@ -100,8 +85,11 @@ namespace Project::DSP {
     struct BufferDouble : public Buffer<T, N> {
         constexpr BufferDouble() : Buffer<T, N>() {}
 
-        static constexpr size_t halfLen() { return N / 2; }
-        constexpr T *half() { return this->buf + halfLen(); }
+        static constexpr size_t halfSize() { return N / 2; }
+        [[nodiscard]] size_t halfLen() const { return N / 2; }
+
+        T *half() { return this->buffer + halfSize(); }
+        const T *half() const { return this->buffer + halfSize(); }
     };
 
 } // namespace Project

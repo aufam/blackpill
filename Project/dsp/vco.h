@@ -2,6 +2,7 @@
 #define PROJECT_DSP_VCO_H
 
 #include "types.h"
+
 namespace Project::DSP {
 
     struct VCO {

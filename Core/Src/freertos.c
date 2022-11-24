@@ -46,7 +46,7 @@ typedef StaticTask_t osStaticThreadDef_t;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-char blink_symbol[16] = "1010";
+char blinkSymbols[16] = "1010";
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -127,9 +127,9 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-      for (size_t i = 0; i < sizeof(blink_symbol); i++) {
-          if (blink_symbol[i] == '\0') break;
-          switch (blink_symbol[i]) {
+      for (size_t i = 0; i < sizeof(blinkSymbols); i++) {
+          if (blinkSymbols[i] == '\0') break;
+          switch (blinkSymbols[i]) {
               case '1': HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); osDelay(150); break;
               case '0': HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); osDelay(150); break;
               default: break;
