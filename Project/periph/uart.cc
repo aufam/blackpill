@@ -1,23 +1,25 @@
 #include "periph/uart.h"
 
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-    using namespace Project::Periph;
-    UART *uart;
-    if (huart->Instance == uart2.huart.Instance) uart = &uart2;
-    else return;
+using namespace Project::periph;
 
-    auto &cb = uart->rxCallback;
-    if (cb.fn) cb.fn(cb.arg, Size);
-    HAL_UARTEx_ReceiveToIdle_DMA(&uart->huart, uart->rxBuffer.begin(), UART::Buffer::size());
-    __HAL_DMA_DISABLE_IT(uart->huart.hdmarx, DMA_IT_HT);
+static UART* select(UART_HandleTypeDef *huart) {
+    if (huart->Instance == uart2.huart.Instance) return &uart2;
+    return nullptr;
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    auto uart = select(huart);
+    if (uart == nullptr)
+        return;
+
+    uart->rxCallback(uart->rxBuffer.data(), Size);
+    uart->init();
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-    using namespace Project::Periph;
-    UART *uart;
-    if (huart->Instance == uart2.huart.Instance) uart = &uart2;
-    else return;
+    auto uart = select(huart);
+    if (uart == nullptr)
+        return;
 
-    auto &cb = uart->txCallback;
-    if (cb.fn) cb.fn(cb.arg, 0);
+    uart->txCallback();
 }

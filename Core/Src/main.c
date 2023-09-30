@@ -30,9 +30,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#ifdef USE_PROJECT
-#include "project.h"
-#endif
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,7 +57,7 @@
 void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
-
+__weak void project_init() {}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -95,17 +93,15 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_TIM4_Init();
   MX_DMA_Init();
+  MX_TIM4_Init();
+  MX_I2C1_Init();
   MX_USART2_UART_Init();
   MX_I2S2_Init();
   MX_RTC_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  #ifdef USE_PROJECT
   project_init();
-  #endif
   /* USER CODE END 2 */
 
   /* Init scheduler */

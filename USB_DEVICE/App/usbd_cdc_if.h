@@ -93,8 +93,8 @@
 extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-void CDC_ReceiveCplt_Callback(uint8_t *pbuf, uint32_t len);
-void CDC_TransmitCplt_Callback(uint8_t *pbuf, uint32_t len);
+void CDC_ReceiveCplt_Callback(const uint8_t *pbuf, uint32_t len);
+void CDC_TransmitCplt_Callback(const uint8_t *pbuf, uint32_t len);
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

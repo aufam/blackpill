@@ -7,27 +7,17 @@
 
 namespace Project {
 
-    /// OLED driver (text only). requirements: I2C class, I2C clock speed 400k
     struct Oled {
         enum { ID_CMD = 0x00u, ID_DATA = 0x40u };
         typedef const uint8_t *Font;
         typedef const DevType &DeviceType;
+        inline static constexpr uint32_t timeout = 100;
 
-        Periph::I2C &i2c;
-        Font font; ///< see fonts/allFonts.h
-        DeviceType device; ///< see SSD1306init.h
-        uint8_t slaveAddr;
-        uint8_t column, row;
-
-        constexpr explicit Oled(Periph::I2C &i2c,
-                                Font font = Adafruit5x7,
-                                DeviceType device = Adafruit128x64,
-                                uint8_t slaveAddr = 0x78)
-        : i2c(i2c)
-        , font(font)
-        , device(device)
-        , slaveAddr(slaveAddr)
-        , column(0), row(0) {}
+        periph::I2C &i2c;
+        uint8_t slaveAddr = 0x78;      
+        Font font = Adafruit5x7;                 ///< see fonts/allFonts.h
+        DeviceType device = Adafruit128x64;      ///< see SSD1306init.h
+        uint8_t column = 0, row = 0;
 
         void init(); ///< write initial commands and clear the screen
         void deinit();
@@ -58,7 +48,8 @@ namespace Project {
         /// @retval 0 = success, -1 = error font is null
         int print(const char *str, bool invertColor = false, uint8_t columnStart = 0xFF, uint8_t rowStart = 0xFF);
 
-        Oled &operator<<(const char *str)   { print(str); return *this; }
+        /// print operator
+        Oled &operator<<(const char *str) { print(str); return *this; }
         Oled &operator<<(char ch) {
             if (print(ch) != -2) return *this;
             if (row + fontRows() >= screenRows()) return *this; // last row

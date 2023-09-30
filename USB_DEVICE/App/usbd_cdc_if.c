@@ -128,11 +128,11 @@ static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_FS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-__weak void CDC_ReceiveCplt_Callback(uint8_t *pbuf, uint32_t len) {
+__weak void CDC_ReceiveCplt_Callback(const uint8_t *pbuf, uint32_t len) {
   UNUSED(pbuf);
   UNUSED(len);
 }
-__weak void CDC_TransmitCplt_Callback(uint8_t *pbuf, uint32_t len) {
+__weak void CDC_TransmitCplt_Callback(const uint8_t *pbuf, uint32_t len) {
   UNUSED(pbuf);
   UNUSED(len);
 }

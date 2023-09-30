@@ -70,6 +70,7 @@ void Error_Handler(void);
 #define SW_ROT_EXTI_IRQn EXTI15_10_IRQn
 #define AUDIO_EN_Pin GPIO_PIN_15
 #define AUDIO_EN_GPIO_Port GPIOA
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
