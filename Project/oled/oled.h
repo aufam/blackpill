@@ -11,7 +11,7 @@ namespace Project {
         enum { ID_CMD = 0x00u, ID_DATA = 0x40u };
         typedef const uint8_t *Font;
         typedef const DevType &DeviceType;
-        inline static constexpr uint32_t timeout = 100;
+        inline static const etl::Time timeout = etl::time::milliseconds(100);
 
         periph::I2C &i2c;
         uint8_t slaveAddr = 0x78;      
@@ -19,63 +19,98 @@ namespace Project {
         DeviceType device = Adafruit128x64;      ///< see SSD1306init.h
         uint8_t column = 0, row = 0;
 
-        void init(); ///< write initial commands and clear the screen
-        void deinit();
+        void init();    ///< write initial commands and clear the screen
+        void deinit();  ///< 
 
         int writeCmd(uint8_t cmd) const; ///< write command
         int writeData(uint8_t *data, uint16_t len); ///< write data to current column and row
 
+        struct ClearArgs { int columnStart = 0, rowStart = 0, columnEnd = 0xff, rowEnd = 0xff; bool invertColor = false; };
+
         /// clear selected region and set cursor to columnStart and rowStart
-        void clear(uint8_t columnStart = 0, uint8_t rowStart = 0,
-                   uint8_t columnEnd = 0xFF, uint8_t rowEnd = 0xFF, bool invertColor = false);
+        /// @param args
+        ///     - .columnStart 
+        ///     - .rowStart 
+        ///     - .columnEnd
+        ///     - .rowEnd
+        ///     - .invertColor
+        void clear(ClearArgs args);
+
+        void clear() { clear({}); }
+
         void clearRemainingRows(bool invertColor = false) {
-            clear(column, row, screenWidth() - 1, screenRows() - 1, invertColor);
+            clear({
+                .columnStart=column, 
+                .rowStart=row, 
+                .columnEnd=screenWidth() - 1, 
+                .rowEnd=screenRows() - 1, 
+                .invertColor=invertColor,
+            });
         }
+
         /// set column: 0 to screen_width - 1
-        void setColumn(uint8_t newColumn);
+        void setColumn(int newColumn);
+
         /// set row: 0 to (screen_height / 8) - 1
-        void setRow(uint8_t newRow);
+        void setRow(int newRow);
+
+        struct SetCursorArgs { int newColumn, newRow; };
 
         /// set column and row
-        void setCursor(uint8_t newColumn, uint8_t newRow) {
-            setColumn(newColumn);
-            setRow(newRow);
+        /// @param args
+        ///     - .newColumn
+        ///     - .newRow
+        void setCursor(SetCursorArgs args) {
+            setColumn(args.newColumn);
+            setRow(args.newRow);
         }
         /// print one char
         /// @retval 0 = success, -1 = error font is null, -2 = column exceeds screen width, 1 = ch is not in font
         int print(char ch, bool invertColor = false);
+
         /// print string terminated with '\0'
         /// @retval 0 = success, -1 = error font is null
         int print(const char *str, bool invertColor = false, uint8_t columnStart = 0xFF, uint8_t rowStart = 0xFF);
 
         /// print operator
-        Oled &operator<<(const char *str) { print(str); return *this; }
+        Oled &operator<<(const char *str) { 
+            print(str); 
+            return *this; 
+        }
+
+        /// overload
         Oled &operator<<(char ch) {
             if (print(ch) != -2) return *this;
             if (row + fontRows() >= screenRows()) return *this; // last row
-            setCursor(0, row + fontRows());
+            setCursor({.newColumn=0, .newRow=row + fontRows()});
             return *this;
         }
 
-        uint8_t screenWidth() const     { return device.lcdWidth; }
-        uint8_t screenHeight() const    { return device.lcdHeight; }
-        uint8_t screenRows() const      { return screenHeight() / 8; }
-        uint8_t columnOffset() const    { return device.colOffset; }
+        int screenWidth() const     { return device.lcdWidth; }
+        int screenHeight() const    { return device.lcdHeight; }
+        int screenRows() const      { return screenHeight() / 8; }
+        int columnOffset() const    { return device.colOffset; }
 
         /// set new font, see fonts/allFonts.h
         void setFont(Font newFont)      { this->font = newFont; }
+
         /// font height in pixels
-        uint8_t fontHeight() const      { return font ? font[FONT_HEIGHT] : 0; }
+        int fontHeight() const      { return font ? font[FONT_HEIGHT] : 0; }
+        
         /// font width in pixels
-        uint8_t fontWidth() const       { return font ? font[FONT_WIDTH] : 0; }
+        int fontWidth() const       { return font ? font[FONT_WIDTH] : 0; }
+        
         /// font height in rows, 1 row is 8 pixels roundup
-        uint8_t fontRows() const        { return font ? (font[FONT_HEIGHT] + 7) / 8 : 0; }
+        int fontRows() const        { return font ? (font[FONT_HEIGHT] + 7) / 8 : 0; }
+        
         /// all characters size, 0 if fixed font width, 1 if letter spacing is 0
-        uint16_t fontSize() const       { return font ? *(uint16_t *) font : 0; }
+        int fontSize() const       { return font ? *(uint16_t *) font : 0; }
+        
         /// first character in the font
         char fontFirstChar() const      { return font ? font[FONT_FIRST_CHAR] : 0; }
+        
         /// number of chars in the font
-        uint8_t fontCharCount() const   { return font ? font[FONT_CHAR_COUNT] : 0; }
+        int fontCharCount() const   { return font ? font[FONT_CHAR_COUNT] : 0; }
     };
 
 } // namespace Project

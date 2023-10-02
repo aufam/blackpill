@@ -1,6 +1,9 @@
 #ifndef PERIPH_USB_H
 #define PERIPH_USB_H
 
+#include "main.h"
+#ifdef HAL_PCD_MODULE_ENABLED
+
 #include "usbd_cdc_if.h"
 #include "etl/array.h"
 #include "etl/string.h"
@@ -23,44 +26,31 @@ namespace Project::periph {
         USBD(const USBD&) = delete; ///< disable copy constructor
         USBD& operator=(const USBD&) = delete;  ///< disable move constructor
 
-        /// set rx callback
-        /// @param fn receive callback function
-        /// @param ctx receive callback function context
-        template <typename Fn, typename Ctx>
-        void setRxCallback(Fn&& fn, Ctx* ctx) { rxCallback = Callback(etl::forward<Fn>(fn), ctx); }
-
-        /// set rx callback
-        /// @param fn receive callback function
-        template <typename Fn>
-        void setRxCallback(Fn&& fn) { rxCallback = etl::forward<Fn>(fn); }
-
-        /// set tx callback
-        /// @param fn receive callback function
-        /// @param ctx receive callback function context
-        template <typename Fn, typename Ctx>
-        void setTxCallback(Fn&& fn, Ctx* ctx) { txCallback = Callback(etl::forward<Fn>(fn), ctx); }
-
-        /// set tx callback
-        /// @param fn receive callback function
-        template <typename Fn>
-        void setTxCallback(Fn&& fn) { txCallback = etl::forward<Fn>(fn); }
+        struct TransmitArgs { const void *buf; size_t len; };
 
         /// USB transmit non blocking
         /// @param buf data buffer
         /// @param len buffer length
         /// @retval @ref USBD_StatusTypeDef (see usbd_def.h)
-        int transmit(const void *buf, uint16_t len) { return CDC_Transmit_FS((uint8_t *) buf, len); }
+        int transmit(TransmitArgs args) { return CDC_Transmit_FS((uint8_t*) args.buf, args.len); }
 
         /// write operator for etl::string
         template <size_t N>
-        USBD& operator<<(const etl::String<N>& str) { transmit(str.data(), str.len()); return *this; }
+        USBD& operator<<(const etl::String<N>& str) { 
+            transmit({.buf=str.data(), .len=str.len()}); 
+            return *this; 
+        }
 
         /// write operator for traditional string
-        USBD& operator<<(const char *str) { transmit(str, strlen(str)); return *this; }
+        USBD& operator<<(const char *str) { 
+            transmit({.buf=str, .len=strlen(str)}); 
+            return *this; 
+        }
     };
 
     extern USBD usb;
 
 } // namespace Project
 
+#endif // HAL_PCD_MODULE_ENABLED
 #endif // PERIPH_USB_H

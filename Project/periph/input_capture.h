@@ -1,6 +1,10 @@
 #ifndef PERIPH_INPUT_CAPTURE_H
 #define PERIPH_INPUT_CAPTURE_H
 
+#include "main.h"
+#ifdef HAL_TIM_MODULE_ENABLED
+
+#include "periph/config.h"
 #include "Core/Inc/tim.h"
 #include "etl/function.h"
 
@@ -9,25 +13,37 @@ namespace Project::periph {
     /// input capture
     /// @note requirements: TIMx input capture mode, TIMx global interrupt
     struct InputCapture {
-        using Callback = etl::Function<void(), void*>; ///< callback function class
+        using Callback = etl::Function<void(), void*>;
+        inline static detail::UniqueInstances<InputCapture, 16> Instances;
 
-        TIM_HandleTypeDef& htim; ///< TIM handler configured by cubeMX
-        uint32_t channel;        ///< TIM_CHANNEL_x
-        Callback callback;       ///< capture callback function
+        TIM_HandleTypeDef& htim;        ///< TIM handler configured by cubeMX
+        uint32_t channel;               ///< TIM_CHANNEL_x
+        Callback callback = {};         ///< capture callback function
 
-        /// default constructor
-        constexpr InputCapture(TIM_HandleTypeDef& htim, uint32_t channel) : htim(htim), channel(channel) {}
+        InputCapture(const InputCapture&) = delete;             ///< disable copy constructor
+        InputCapture& operator=(const InputCapture&) = delete;  ///< disable copy assignment
 
-        InputCapture(const InputCapture&) = delete; ///< disable copy constructor
+        /// start input capture and register this instance
+        void init() { 
+            #ifdef PERIPH_INPUT_CAPTURE_USE_IT
+            HAL_TIM_IC_Start_IT(&htim, channel); 
+            #endif 
+            #ifdef PERIPH_INPUT_CAPTURE_USE_DMA
+            HAL_TIM_IC_Start_DMA(&htim, channel); 
+            #endif
+            Instances.push(this);
+        }
 
-        InputCapture& operator=(const InputCapture&) = delete;  ///< disable move constructor
-        InputCapture& operator=(InputCapture&&) = delete;       ///< disable move assignment
-
-        /// start TIM IC interrupt
-        void init() { HAL_TIM_IC_Start_IT(&htim, channel); }
-
-        /// stop TIM IC interrupt
-        void deinit() { HAL_TIM_IC_Stop_IT(&htim, channel); }
+        /// stop input capture and unregister this instance
+        void deinit() { 
+            #ifdef PERIPH_INPUT_CAPTURE_USE_IT
+            HAL_TIM_IC_Stop_IT(&htim, channel); 
+            #endif 
+            #ifdef PERIPH_INPUT_CAPTURE_USE_DMA
+            HAL_TIM_IC_Stop_DMA(&htim, channel); 
+            #endif
+            Instances.pop(this);
+        }
 
         /// enable interrupt
         void enable() {
@@ -62,7 +78,7 @@ namespace Project::periph {
         /// read captured value TIMx->CCRy
         uint32_t read() { return HAL_TIM_ReadCapturedValue(&htim, channel); }
     };
-
 }
 
-#endif //PERIPH_INPUT_CAPTURE_H
+#endif // HAL_TIM_MODULE_ENABLED
+#endif // PERIPH_INPUT_CAPTURE_H

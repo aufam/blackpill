@@ -133,7 +133,7 @@ namespace Project::etl {
         /// @param args
         ///     - .flags specifies the flags to wait for
         ///     - .option osFlagsWaitAny (default) or osFlagsWaitAll
-        ///     - .timeout default = osWaitForever
+        ///     - .timeout default = time::infinite
         ///     - .doReset specifies wether reset the flags or not, default = true
         /// @return flags before resetting or error code if highest bit set
         /// @note can be called from ISR if timeout == time::immediate
@@ -149,7 +149,7 @@ namespace Project::etl {
 
         /// wait for any flags of this event to become signaled
         /// @param args
-        ///     - .timeout default = osWaitForever
+        ///     - .timeout default = time::infinite
         ///     - .doReset specifies wether reset the flags or not, default = true
         /// @return flags before resetting or error code if highest bit set
         /// @note can be called from ISR if timeout == 0

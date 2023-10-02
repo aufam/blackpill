@@ -1,21 +1,35 @@
 #include "periph/i2s.h"
 
-void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
-    using namespace Project::Periph;
-    I2S *i2s;
-    if (hi2s->Instance == i2s2.hi2s.Instance) i2s = &i2s2;
-    else return;
+#ifdef HAL_I2S_MODULE_ENABLED
 
-    auto &cb = i2s->halfCB;
-    if (cb.fn) cb.fn(cb.arg);
+using namespace Project::periph;
+
+static I2S* selector(I2S_HandleTypeDef *hi2s) {
+    for (auto instance : I2S::Instances.instances) {
+        if (instance == nullptr)
+            continue;
+        
+        if (hi2s->Instance == instance->hi2s.Instance)
+            return instance;
+    }
+
+    return nullptr;
+}
+
+void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
+    auto i2s = selector(hi2s);
+    if (i2s == nullptr)
+        return;
+
+    i2s->halfCallback();
 }
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    using namespace Project::Periph;
-    I2S *i2s;
-    if (hi2s->Instance == i2s2.hi2s.Instance) i2s = &i2s2;
-    else return;
+    auto i2s = selector(hi2s);
+    if (i2s == nullptr)
+        return;
 
-    auto &cb = i2s->fullCB;
-    if (cb.fn) cb.fn(cb.arg);
+    i2s->fullCallback();
 }
+
+#endif

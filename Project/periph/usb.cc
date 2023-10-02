@@ -1,4 +1,5 @@
 #include "periph/usb.h"
+#ifdef HAL_PCD_MODULE_ENABLED
 
 extern uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 
@@ -13,3 +14,5 @@ void CDC_ReceiveCplt_Callback(const uint8_t *pbuf, uint32_t len) {
 void CDC_TransmitCplt_Callback(const uint8_t *pbuf, uint32_t len) {
     usb.txCallback(pbuf, len);
 }
+
+#endif

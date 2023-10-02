@@ -1,9 +1,18 @@
 #include "periph/uart.h"
 
+#ifdef HAL_UART_MODULE_ENABLED
+
 using namespace Project::periph;
 
 static UART* select(UART_HandleTypeDef *huart) {
-    if (huart->Instance == uart2.huart.Instance) return &uart2;
+    for (auto instance : UART::Instances.instances) {
+        if (instance == nullptr)
+            continue;
+
+        if (huart->Instance == instance->huart.Instance)
+            return instance;
+    }
+
     return nullptr;
 }
 
@@ -23,3 +32,5 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 
     uart->txCallback();
 }
+
+#endif

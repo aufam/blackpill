@@ -1,6 +1,9 @@
 #ifndef PERIPH_RTC_H
 #define PERIPH_RTC_H
 
+#include "main.h"
+#ifdef HAL_RTC_MODULE_ENABLED
+
 #include "Core/Inc/rtc.h"
 #include "etl/time.h"
 
@@ -33,18 +36,20 @@ namespace Project::periph {
             lastUpdate = now;
         }
 
-        int setDate(uint8_t week_day, uint8_t date, uint8_t month, uint8_t year) {
-            sDate.WeekDay = week_day;
-            sDate.Date = date;
-            sDate.Month = month;
-            sDate.Year = year;
+        struct SetDateArgs { uint8_t week_day, date, month, year; };
+        int setDate(SetDateArgs args) {
+            sDate.WeekDay = args.week_day;
+            sDate.Date = args.date;
+            sDate.Month = args.month;
+            sDate.Year = args.year;
             return HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
         }
 
-        int setTime(uint8_t hrs, uint8_t mins, uint8_t secs) {
-            sTime.Hours = hrs;
-            sTime.Minutes = mins;
-            sTime.Seconds = secs;
+        struct SetTimeArgs { uint8_t hrs, mins, secs; };
+        int setTime(SetTimeArgs args) {
+            sTime.Hours = args.hrs;
+            sTime.Minutes = args.mins;
+            sTime.Seconds = args.secs;
             return HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
         }
 
@@ -62,5 +67,5 @@ namespace Project::periph {
 
 } // namespace Project
 
-
+#endif // HAL_RTC_MODULE_ENABLED
 #endif // PERIPH_RTC_H

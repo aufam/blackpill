@@ -1,11 +1,28 @@
 #include "periph/pwm.h"
 
+#ifdef HAL_TIM_MODULE_ENABLED
+
 using namespace Project::periph;
 
+static HAL_TIM_ActiveChannel activeChannel(uint32_t channel) {
+    switch (channel) {
+        case TIM_CHANNEL_1: return HAL_TIM_ACTIVE_CHANNEL_1;
+        case TIM_CHANNEL_2: return HAL_TIM_ACTIVE_CHANNEL_2;
+        case TIM_CHANNEL_3: return HAL_TIM_ACTIVE_CHANNEL_3;
+        case TIM_CHANNEL_4: return HAL_TIM_ACTIVE_CHANNEL_4;
+        default: return HAL_TIM_ACTIVE_CHANNEL_CLEARED;
+    }
+}
+
 static PWM* select(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == pwm2channel1.htim.Instance && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) 
-        return &pwm2channel1;
-    
+    for (auto instance : PWM::Instances.instances) {
+        if (instance == nullptr)
+            continue;
+
+        if (htim->Instance == instance->htim.Instance && htim->Channel == activeChannel(instance->channel))
+            return instance;
+    }
+
     return nullptr;
 }
 
@@ -14,7 +31,7 @@ void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) {
     if (pwm == nullptr)
         return;
 
-    pwm->halfCB();
+    pwm->halfCallback();
 }
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
@@ -22,5 +39,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
     if (pwm == nullptr)
         return;
 
-    pwm->fullCB();
+    pwm->fullCallback();
 }
+
+#endif // HAL_TIM_MODULE_ENABLED

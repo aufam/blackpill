@@ -1,12 +1,9 @@
-.vscode/
-.idea/
-build/
-backup/
-Debug/
-cmake-build-debug/
-CMakeLists_template.txt
+.*
+!.gitignore
+/*[Bb]uild*
+/*[Rr]elease*
+/*[Dd]ebug*
+/*[Bb]ackup*
 
-# CubeIDE settings
-.project
-.cproject
-.mxproject
+CMakeLists_template.txt
+compile_commands.json
