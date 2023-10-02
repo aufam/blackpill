@@ -1,8 +1,6 @@
 #include "project.h"
-#include "periph/usb.h"
-#include "etl/string.h"
-
 #include "periph/all.h"
+#include "etl/string.h"
 
 using namespace Project;
 using namespace Project::etl::literals;
