@@ -1,6 +1,34 @@
 #ifndef PERIPH_CONFIG_H
 #define PERIPH_CONFIG_H
 
+// callback list
+#if !defined(PERIPH_CALLBACK_LIST_MAX_SIZE)
+#define PERIPH_CALLBACK_LIST_MAX_SIZE 16
+#endif
+
+// Timebase source
+#if !defined(PERIPH_TIME_BASE_SOURCE)
+#define PERIPH_TIME_BASE_SOURCE htim11
+#endif
+
+// ADC
+#if !defined(PERIPH_ADC_N_CHANNEL)
+#define PERIPH_ADC_N_CHANNEL 4
+#endif
+
+#if !defined(PERIPH_ADC_VREF)
+#define PERIPH_ADC_VREF 3.3
+#endif
+
+#if !defined(PERIPH_ADC_RESOLUTION_BITS)
+#define PERIPH_ADC_RESOLUTION_BITS 12
+#endif
+
+// CAN
+#if !defined(PERIPH_CAN_USE_FIFO0) && !defined(PERIPH_CAN_USE_FIFO1)
+#define PERIPH_CAN_USE_FIFO1
+#endif
+
 // TIM encoder
 #if !defined(PERIPH_ENCODER_USE_IT) && !defined(PERIPH_ENCODER_USE_DMA)
 #define PERIPH_ENCODER_USE_IT
@@ -50,22 +78,40 @@ namespace Project::periph::detail {
     template <typename T, size_t N>
     class UniqueInstances {
     public:
-        T* instances[N] = {};
+        T instances[N] = {};
 
-        bool push(T* it) {
-            for (auto& instance : instances) if (!instance) {
-                instance = it;
-                return true;
+        void push(T it) {
+            if (find(it)) {
+                return;
             }
-            return false;
+
+            T empty = {};
+            T* ptr = find(empty);
+            if (ptr) {
+                *ptr = it;
+            }
         }
 
-        bool pop(T* it) {
-            for (auto& instance : instances) if (instance == it) {
-                instance = nullptr;
-                return true;
+        void pop(T it) {
+            T empty = {};
+            for (T* ptr = find(it); ptr != nullptr; ptr = find(it)) {
+                *ptr = empty;
             }
-            return false;
+        }
+
+        bool isEmpty() {
+            T empty = {};
+            for (auto& instance : instances) if (instance != empty) {
+                return false;
+            }
+            return true;
+        }
+
+        T* find(T it) {
+            for (auto& instance : instances) if (instance == it) {
+                return &instance;
+            }
+            return nullptr;
         }
     };
 }

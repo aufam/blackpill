@@ -14,7 +14,7 @@ namespace Project::periph {
     /// @note requirements: TIMx encoder mode, TIMx global interrupt
     struct Encoder {
         using Callback = etl::Function<void(), void*>;
-        inline static detail::UniqueInstances<Encoder, 16> Instances;
+        inline static detail::UniqueInstances<Encoder*, 16> Instances;
 
         TIM_HandleTypeDef &htim;            ///< TIM handler configured by cubeMX
         int16_t value = 0;                  ///< current value

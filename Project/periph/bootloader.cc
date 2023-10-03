@@ -2,6 +2,8 @@
 #include "periph/usb.h"
 #include "Core/Inc/tim.h"
 
+#if defined(STM32F405xx)
+
 extern "C" USBD_HandleTypeDef hUsbDeviceFS;
 extern "C" TIM_HandleTypeDef        htim11;
 
@@ -54,3 +56,5 @@ void periph::jumpToBootLoader() {
 	// Jump to app firmware
 	BOOTVTAB->Reset_Handler();
 }    
+
+#endif

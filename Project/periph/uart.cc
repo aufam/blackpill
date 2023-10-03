@@ -4,7 +4,7 @@
 
 using namespace Project::periph;
 
-static UART* select(UART_HandleTypeDef *huart) {
+static UART* selector(UART_HandleTypeDef *huart) {
     for (auto instance : UART::Instances.instances) {
         if (instance == nullptr)
             continue;
@@ -17,7 +17,7 @@ static UART* select(UART_HandleTypeDef *huart) {
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-    auto uart = select(huart);
+    auto uart = selector(huart);
     if (uart == nullptr)
         return;
 
@@ -26,7 +26,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-    auto uart = select(huart);
+    auto uart = selector(huart);
     if (uart == nullptr)
         return;
 

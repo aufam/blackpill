@@ -14,7 +14,7 @@ static HAL_TIM_ActiveChannel activeChannel(uint32_t channel) {
     }
 }
 
-static PWM* select(TIM_HandleTypeDef *htim) {
+static PWM* selector(TIM_HandleTypeDef *htim) {
     for (auto instance : PWM::Instances.instances) {
         if (instance == nullptr)
             continue;
@@ -27,7 +27,7 @@ static PWM* select(TIM_HandleTypeDef *htim) {
 }
 
 void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) {
-    auto pwm = select(htim);
+    auto pwm = selector(htim);
     if (pwm == nullptr)
         return;
 
@@ -35,7 +35,7 @@ void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) {
 }
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
-    auto pwm = select(htim);
+    auto pwm = selector(htim);
     if (pwm == nullptr)
         return;
 
