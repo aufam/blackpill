@@ -74,6 +74,8 @@ include_directories(
     Core/Inc 
     USB_DEVICE/App 
     USB_DEVICE/Target 
+    Drivers/CMSIS/Device/ST/STM32F4xx/Include 
+    Drivers/CMSIS/Include
     Drivers/STM32F4xx_HAL_Driver/Inc 
     Drivers/STM32F4xx_HAL_Driver/Inc/Legacy 
     Middlewares/Third_Party/FreeRTOS/Source/include 
@@ -81,8 +83,6 @@ include_directories(
     Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F 
     Middlewares/ST/STM32_USB_Device_Library/Core/Inc 
     Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc 
-    Drivers/CMSIS/Device/ST/STM32F4xx/Include 
-    Drivers/CMSIS/Include
     ${CMAKE_HOME_DIRECTORY}
     Project
 )
@@ -90,7 +90,8 @@ include_directories(
 # source files
 file(GLOB_RECURSE SOURCES 
     Core/*.*
-    Middlewares/*.*
+    Middlewares/ST/*.*
+    Middlewares/Third_Party/FreeRTOS/*.*
     Drivers/*.*
     USB_DEVICE/*.*
     Project/*.*
@@ -98,6 +99,10 @@ file(GLOB_RECURSE SOURCES
 
 # build elf
 add_executable(${PROJECT_NAME}.elf ${SOURCES} ${LINKER_SCRIPT})
+
+# add etl
+add_subdirectory(Middlewares/Third_Party/etl)
+target_link_libraries(${PROJECT_NAME}.elf etl)
 
 # build hex and bin files
 set(HEX_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.hex)
