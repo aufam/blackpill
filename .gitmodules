@@ -1,4 +1,4 @@
 [submodule "Middlewares/Third_Party/etl"]
 	path = Middlewares/Third_Party/etl
-	url = https://git.delameta.id/m.aufa/etl.git
+	url = https://github.com/aufam/etl.git
 	branch = FreeRTOS
