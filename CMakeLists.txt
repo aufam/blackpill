@@ -28,11 +28,7 @@ elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
     message(STATUS "Maximum optimization for speed, debug info included")
     add_compile_options(-Ofast -g)
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
-    message(STATUS "Maximum optimiza
-    set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32F411CEUX_FLASH.ld)
-    
-    add_link_options(-Wl,-gc-sections,--print-memory-usage,-Map=${PROJECT_BINARY_DIR}/${PROJECT_NAME}.map)
-    add_link_options(-T ${LINKER_SCRIPT})tion for size")
+    message(STATUS "Maximum optimization for size")
     add_compile_options(-Os)
 else ()
     message(STATUS "Minimal optimization, debug info included")
