@@ -1,5 +1,6 @@
 .*
 !.gitignore
+!.gitmodules
 /*[Bb]uild*
 /*[Rr]elease*
 /*[Dd]ebug*
