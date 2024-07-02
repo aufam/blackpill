@@ -62,12 +62,6 @@ void Error_Handler(void);
 #define SW_A_Pin GPIO_PIN_8
 #define SW_A_GPIO_Port GPIOA
 #define SW_A_EXTI_IRQn EXTI9_5_IRQn
-#define SW_B_Pin GPIO_PIN_9
-#define SW_B_GPIO_Port GPIOA
-#define SW_B_EXTI_IRQn EXTI9_5_IRQn
-#define SW_ROT_Pin GPIO_PIN_10
-#define SW_ROT_GPIO_Port GPIOA
-#define SW_ROT_EXTI_IRQn EXTI15_10_IRQn
 #define AUDIO_EN_Pin GPIO_PIN_15
 #define AUDIO_EN_GPIO_Port GPIOA
 

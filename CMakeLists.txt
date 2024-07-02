@@ -17,6 +17,13 @@ project(blackpill C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 
+# user defines
+add_definitions(
+    -DPERIPH_SYSTICK_TIM_BASE_SOURCE=TIM11
+    -DETL_ASYNC_N_CHANNELS=8             # number of tasks that handle asynchronous functions
+    -DETL_ASYNC_TASK_THREAD_SIZE=1024    # the size of each task
+)
+
 # enable assembler files preprocessing
 add_compile_options($<$<COMPILE_LANGUAGE:ASM>:-x$<SEMICOLON>assembler-with-cpp>)
 
@@ -52,7 +59,7 @@ add_link_options(-mcpu=cortex-m4 -mthumb -mthumb-interwork)
 # warnings
 add_compile_options(-Wall -Wextra)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix -Wno-attributes")
 
 # defines
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32F411xE)
@@ -104,6 +111,18 @@ target_link_libraries(${PROJECT_NAME}.elf etl)
 add_subdirectory(Middlewares/Third_Party/stm32_hal_interface)
 target_link_libraries(${PROJECT_NAME}.elf periph)
 
+# add oled
+add_subdirectory(Middlewares/Third_Party/stm32_oled)
+target_link_libraries(${PROJECT_NAME}.elf oled)
+
+# add wizchip
+add_subdirectory(Middlewares/Third_Party/stm32_wizchip)
+target_link_libraries(${PROJECT_NAME}.elf wizchip)
+
+# add modbus
+add_subdirectory(Middlewares/Third_Party/stm32_modbus)
+target_link_libraries(${PROJECT_NAME}.elf modbus)
+
 # build hex and bin files
 set(HEX_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.hex)
 set(BIN_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.bin)
@@ -115,7 +134,7 @@ add_custom_command(
 )
 
 add_custom_target(flash
-    COMMAND st-flash --reset write ${BIN_FILE} 0x08000000
+    COMMAND st-flash write ${BIN_FILE} 0x08000000
     DEPENDS ${BIN_FILE}
 )
 

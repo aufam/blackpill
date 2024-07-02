@@ -22,7 +22,9 @@
 #include "dma.h"
 #include "i2c.h"
 #include "i2s.h"
+#include "iwdg.h"
 #include "rtc.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
@@ -100,6 +102,9 @@ int main(void)
   MX_I2S2_Init();
   MX_RTC_Init();
   MX_TIM2_Init();
+  MX_SPI1_Init();
+  MX_IWDG_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   project_init();
   /* USER CODE END 2 */
