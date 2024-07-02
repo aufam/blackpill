@@ -52,11 +52,12 @@ You can modify the CubeMX-generated code by editing the ioc file and regeneratin
 This allows customization of hardware configurations and peripheral setups.
 
 ### Kernel Initialization
-The kernel initialization is defined in Project/main.cpp and Project/main.hpp. 
+The kernel initialization is defined in [main.cpp](Project/main.cpp) and [main.hpp](Project/main.hpp). 
 You can modify these files to customize startup routines, configure peripherals, or initialize system-wide settings.
 
 ### Adding Application Sources
-Additional application-specific source files can be added under Project/apps/. These files can contain your custom application logic, task definitions, or any other functionalities specific to your project.
+Additional application-specific source files can be added under [apps](Project/apps/) folder. 
+These files can contain your custom application logic, task definitions, or any other functionalities specific to your project.
 
 ### Build
 ```bash
