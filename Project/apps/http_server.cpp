@@ -61,6 +61,11 @@ APP(http_server) {
         return "Hello world from stm32-wizchip/" WIZCHIP_VERSION;
     });
 
+    app.Get("/panic", std::tuple{arg::arg("msg")}, 
+    [](std::string msg) { 
+        panic(msg.c_str()); 
+    });
+
     // example: - get request param (in this case the body as string_view), - possible error return value
     app.Post("/body", std::tuple{arg::body},
     [](std::string_view body) -> etl::Result<std::string_view, Server::Error> {
