@@ -21,7 +21,7 @@ set(CMAKE_C_STANDARD 11)
 add_definitions(
     -DPERIPH_SYSTICK_TIM_BASE_SOURCE=TIM11
     -DETL_ASYNC_N_CHANNELS=8             # number of tasks that handle asynchronous functions
-    -DETL_ASYNC_TASK_THREAD_SIZE=1024    # the size of each task
+    -DETL_ASYNC_TASK_THREAD_SIZE=2048    # the size of each task
 )
 
 # enable assembler files preprocessing

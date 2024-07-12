@@ -1,9 +1,12 @@
 #include "main.hpp"
 #include "wizchip/http/server.h"
+#include "wizchip/http/client.h"
 #include "etl/heap.h"
 
 using namespace Project;
+using namespace Project::etl::literals;
 using namespace wizchip::http;
+using Project::etl::mv;
 
 // define some json rules for some http classes
 JSON_DEFINE(Project::wizchip::http::Server::Router, 
@@ -38,14 +41,6 @@ APP(http_server) {
     // example: set additional global headers
     app.global_headers["Server"] = [](const Request&, const Response&) { 
         return "stm32-wizchip/" WIZCHIP_VERSION; 
-    };
-    
-    app.global_headers["Content-Length"] = [](const Request&, const Response& res) { 
-        return res.body.size() ? std::to_string(res.body.size()) : "";
-    };
-    
-    app.global_headers["X-Response-Time"] = [](const Request&, const Response&) { 
-        return std::to_string((int)etl::time::elapsed(app.get_elapsed_time()).ms()) + "ms";
     };
 
     // example: set custom error handler
@@ -147,6 +142,27 @@ APP(http_server) {
     app.Get("/url", std::tuple{arg::url},
     [](etl::Ref<const wizchip::URL> url) {
         return url;
+    });
+
+    app.route("/ethernet_buffer_max", {"GET"}, {},
+    []() {
+        return getSn_TxMAX(0);
+    });
+
+    app.route("/redirect", {"GET", "POST"}, std::tuple{arg::method, arg::headers, arg::body, arg::arg("path")}, 
+    [](
+        std::string method, 
+        etl::Ref<const etl::UnorderedMap<std::string, std::string>> headers, 
+        std::string body, 
+        std::string path
+    ) -> etl::Result<std::string, Server::Error> {
+        return request(method, path, {.headers=*headers, .body=mv | body}).wait(1s)
+            .then([](Response res) {
+                return mv | res.body;
+            })
+            .except([](osStatus_t) {
+                return Server::Error{StatusRequestTimeout, "timeout"};
+            });
     });
 
     app.start({.port=5000, .number_of_socket=4});
