@@ -1,4 +1,5 @@
 #include "main.hpp"
+#include "etl/heap.h"
 
 namespace Project {
     etl::Tasks tasks;
@@ -30,6 +31,14 @@ namespace Project::periph {
 }
 
 using namespace Project;
+
+void debug_cnt(const char* format, size_t s1, size_t s2) {
+    periph::uart1 << f(format, s1, s2);
+}
+
+void debug_str(const char* format, const char* str, size_t len) {
+    periph::uart1 << f(format, str, len);
+}
 
 extern "C" void project_init() {
     tasks.init();

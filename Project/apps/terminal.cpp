@@ -12,6 +12,8 @@ APP(terminal) {
 
     terminal.add_async("test_async", [](int num) -> Result<const char*, const char*> {
         await | etl::task::sleep(1s);
+        auto lock = await | mutex.lock();
+        
         if (num > 0) {
             return Ok(f("%d is positive", num));
         } else if (num < 0) {
