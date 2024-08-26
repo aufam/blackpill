@@ -1,7 +1,8 @@
-#include "apps/app.h"
-#include "etl/async.h"
-#include "etl/string_view.h"
-#include "usbd_cdc_if.h"
+#include <apps/app.h>
+#include <etl/async.h>
+#include <etl/string_view.h>
+#include <main.h>
+#include <task.h>
 
 using namespace Project;
 
@@ -31,9 +32,17 @@ extern "C" void project_init() {
     App::run();
 }
 
+extern UART_HandleTypeDef huart1;
+
 extern "C" void panic(const char* msg) {
-    CDC_Transmit_FS((uint8_t*)msg, ::strlen(msg));
-    for (;;) {}
+    etl::task::terminate(); // terminate all tasks
+    taskDISABLE_INTERRUPTS();
+	__disable_irq();
+
+    for (;;) {
+        HAL_UART_Transmit(&huart1, (const uint8_t*)msg, ::strlen(msg), HAL_MAX_DELAY);
+        for (int i = 0; i < 100'000'000; ++i);
+    }
 }
 
 App::App(const char* name, App::function_t fn) {
