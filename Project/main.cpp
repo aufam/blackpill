@@ -1,76 +1,46 @@
-#include "main.hpp"
-#include "etl/heap.h"
-
-namespace Project {
-    etl::Tasks tasks;
-    etl::Mutex mutex;
-    etl::String<128> f;
-    Terminal terminal {.uart=periph::uart1};
-
-    wizchip::Ethernet ethernet({
-        .hspi=hspi1,
-        .cs={.port=GPIOA, .pin=GPIO_PIN_4},
-        .rst={.port=GPIOA, .pin=GPIO_PIN_1},
-        .netInfo={ 
-            .mac={0x00, 0x08, 0xdc, 0xff, 0xee, 0xdd},
-            .ip={10, 20, 30, 2},
-            .sn={255, 255, 255, 0},
-            .gw={10, 20, 30, 1},
-            .dns={10, 20, 30, 1},
-            .dhcp=NETINFO_STATIC,
-        },
-    });
-}
-
-namespace Project::periph {
-    Encoder encoder4 { .htim=htim4 };
-    I2S i2s2 { .hi2s=hi2s2 };
-    PWM pwm2channel1 { .htim=htim2, .channel=TIM_CHANNEL_1 };
-    UART uart1 { .huart=huart1 };
-    UART uart2 { .huart=huart2 };
-}
+#include "apps/app.h"
+#include "etl/async.h"
+#include "etl/string_view.h"
+#include "usbd_cdc_if.h"
 
 using namespace Project;
 
-void debug_cnt(const char* format, size_t s1, size_t s2) {
-    periph::uart1 << f(format, s1, s2);
+extern "C" {
+    void delameta_stm32_hal_init();
+    void delameta_stm32_hal_wizchip_init();
+    void delameta_stm32_hal_wizchip_set_net_info(
+        const uint8_t mac[6], 
+        const uint8_t ip[4], 
+        const uint8_t sn[4], 
+        const uint8_t gw[4], 
+        const uint8_t dns[4]
+    );
 }
 
-void debug_str(const char* format, const char* str, size_t len) {
-    periph::uart1 << f(format, str, len);
-}
+static const uint8_t mac[] = {0x00, 0x08, 0xdc, 0xff, 0xee, 0xdd};
+static const uint8_t ip[] = {10, 20, 30, 2};
+static const uint8_t sn[] = {255, 255, 255, 0};
+static const uint8_t gw[] = {10, 20, 30, 1};
+static const uint8_t dns[] = {10, 20, 30, 1};
 
 extern "C" void project_init() {
-    tasks.init();
-    mutex.init();
-    ethernet.init();
-    periph::uart1.init();
-    periph::uart2.init();
-
-    terminal.init();
-
-    App::run("*");
+    etl::task::init();
+    delameta_stm32_hal_init();
+    delameta_stm32_hal_wizchip_set_net_info(mac, ip, sn, gw, dns);
+    delameta_stm32_hal_wizchip_init();
+    App::run();
 }
 
 extern "C" void panic(const char* msg) {
-    auto delay = [] {
-        for (int i = 0; i < 500'0000; ++i);
-    };
-
-    tasks.terminate();
-    portDISABLE_INTERRUPTS();
-
-    for (;;) {
-        periph::uart1 << f("panic: %s\n", msg);
-        delay();
-    }
+    CDC_Transmit_FS((uint8_t*)msg, ::strlen(msg));
+    for (;;) {}
 }
 
 App::App(const char* name, App::function_t fn) {
     if (name == etl::string_view("")) {
         panic("App name cannot be empty");
     }
-    if (cnt == cnt_max) {
+    if (cnt == APP_BUFFER_SIZE) {
         panic("App buffer is full");
     }
     functions[cnt] = fn;
@@ -92,49 +62,6 @@ void App::run(const char* fil) {
     }
 }
 
-App::function_t App::functions[App::cnt_max] = {};
-const char* App::names[App::cnt_max] = {};
+App::function_t App::functions[APP_BUFFER_SIZE] = {};
+const char* App::names[APP_BUFFER_SIZE] = {};
 int App::cnt = 0;
-
-void Terminal::init() {
-    uart.rxCallbackList.push(etl::bind<&Terminal::process>(this));
-}
-
-void Terminal::process(const uint8_t* buf, size_t len) {
-    auto sv = etl::string_view(buf, len);
-    auto command_lines = sv.split("\n");
-
-    for (auto line: command_lines) {
-        auto args = line.split(" ");
-        bool handled = false;
-
-        for (auto &[name, handler]: routers) {
-            if (args[0] == name) {
-                auto result = handler(args);
-                response(result);
-                handled = true;
-                break;
-            }
-        }
-
-        if (not handled) {
-            response(etl::Err("no matching command"));
-        }
-    }
-}
-
-void Terminal::response(etl::Result<const char*, const char*> result) {
-    if (result.is_ok()) {
-        auto ok = result.unwrap();
-        if (ok == etl::string_view("")) {
-            uart << "Ok\n";
-        } else {
-            uart << "Ok: " << ok << "\n";
-        }
-    } else {
-        auto err = result.unwrap_err();
-        if (err != etl::string_view("")) {
-            uart << "Err: " << err << "\n";
-        }
-    }
-}

@@ -14,14 +14,23 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # project settings
 project(blackpill C CXX ASM)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 11)
 
 # user defines
 add_definitions(
-    -DPERIPH_SYSTICK_TIM_BASE_SOURCE=TIM11
-    -DETL_ASYNC_N_CHANNELS=8             # number of tasks that handle asynchronous functions
-    -DETL_ASYNC_TASK_THREAD_SIZE=2048    # the size of each task
+    -DAPP_BUFFER_SIZE=64
+    -DETL_ASYNC_N_CHANNELS=8
+    -DETL_ASYNC_TASK_THREAD_SIZE=2048
+    -DETL_ASYNC_TASK_SENDER_MEMPOOL_SIZE=36
+	-DDELAMETA_STM32_USE_HAL_UART1
+	-DDELAMETA_STM32_USE_HAL_UART2
+	-DDELAMETA_STM32_USE_HAL_USB
+	-DDELAMETA_STM32_WIZCHIP_CS_PORT=GPIOA
+	-DDELAMETA_STM32_WIZCHIP_CS_PIN=GPIO_PIN_4
+	-DDELAMETA_STM32_WIZCHIP_RST_PORT=GPIOA
+	-DDELAMETA_STM32_WIZCHIP_RST_PIN=GPIO_PIN_1
+	-DDELAMETA_STM32_WIZCHIP_SPI=hspi1
 )
 
 # enable assembler files preprocessing
@@ -107,21 +116,24 @@ add_executable(${PROJECT_NAME}.elf ${SOURCES} ${LINKER_SCRIPT})
 add_subdirectory(Middlewares/Third_Party/etl)
 target_link_libraries(${PROJECT_NAME}.elf etl)
 
-# add periph
-add_subdirectory(Middlewares/Third_Party/stm32_hal_interface)
-target_link_libraries(${PROJECT_NAME}.elf periph)
+# add delameta
+set(DELAMETA_BUILD_APP OFF CACHE BOOL "Disable build app" FORCE)
+set(DELAMETA_BUILD_TEST OFF CACHE BOOL "Disable build test" FORCE)
+set(DELAMETA_TARGET_LINUX OFF CACHE BOOL "Don't use target linux" FORCE)
+set(DELAMETA_TARGET_STM32 ON CACHE BOOL "Use target STM32" FORCE)
+add_subdirectory(Middlewares/Third_Party/delameta)
+target_link_libraries(${PROJECT_NAME}.elf delameta)
 
-# add oled
-add_subdirectory(Middlewares/Third_Party/stm32_oled)
-target_link_libraries(${PROJECT_NAME}.elf oled)
+# add boost_preprocessor
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+add_subdirectory(Middlewares/Third_Party/boost_preprocessor)
+target_link_libraries(${PROJECT_NAME}.elf boost_preprocessor)
 
-# add wizchip
-add_subdirectory(Middlewares/Third_Party/stm32_wizchip)
-target_link_libraries(${PROJECT_NAME}.elf wizchip)
-
-# add modbus
-add_subdirectory(Middlewares/Third_Party/stm32_modbus)
-target_link_libraries(${PROJECT_NAME}.elf modbus)
+# add fmt
+set(FMT_USE_EXCEPTIONS OFF CACHE BOOL "" FORCE)
+set(FMT_USE_RTTI OFF CACHE BOOL "" FORCE)
+add_subdirectory(Middlewares/Third_Party/fmt)
+target_link_libraries(${PROJECT_NAME}.elf fmt)
 
 # build hex and bin files
 set(HEX_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.hex)

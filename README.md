@@ -45,19 +45,31 @@ Template project for STM32 blackpill Development
     ├── Project/                    # Kernel and apps
     │ ├── apps/                     # Apps source
     │ ├── main.cpp                  # Kernel init
-    │ ├── main.hpp                  # Kernel header
+
+### Used Peripherals
+1. USB CDC (PA11, PA12)
+2. UART1 (PA9, PA10)
+3. SPI1 (PA5, PA6, PA7)
+4. WIZCHIP 3300 (SPI=SPI1, CS=PA4, RST=PA1)
 
 ### CubeMX Integration
 You can modify the CubeMX-generated code by editing the ioc file and regenerating the code as needed using STM32CubeMX. 
 This allows customization of hardware configurations and peripheral setups.
 
 ### Kernel Initialization
-The kernel initialization is defined in [main.cpp](Project/main.cpp) and [main.hpp](Project/main.hpp). 
+The kernel initialization is defined in [main.cpp](Project/main.cpp). 
 You can modify these files to customize startup routines, configure peripherals, or initialize system-wide settings.
 
 ### Adding Application Sources
 Additional application-specific source files can be added under [apps](Project/apps/) folder. 
 These files can contain your custom application logic, task definitions, or any other functionalities specific to your project.
+
+### Clone
+```bash
+git clone https://github.com/aufam/blackpill.git --recurse
+cmake -B build
+cmake --build build
+```
 
 ### Build
 ```bash

@@ -2,15 +2,12 @@
 	path = Middlewares/Third_Party/etl
 	url = https://github.com/aufam/etl.git
 	branch = FreeRTOS
-[submodule "Middlewares/Third_Party/stm32_hal_interface"]
-	path = Middlewares/Third_Party/stm32_hal_interface
-	url = https://github.com/aufam/stm32_hal_interface.git
-[submodule "Middlewares/Third_Party/stm32_oled"]
-	path = Middlewares/Third_Party/stm32_oled
-	url = https://github.com/aufam/stm32_oled
-[submodule "Middlewares/Third_Party/stm32_wizchip"]
-	path = Middlewares/Third_Party/stm32_wizchip
-	url = https://github.com/aufam/stm32_wizchip
-[submodule "Middlewares/Third_Party/stm32_modbus"]
-	path = Middlewares/Third_Party/stm32_modbus
-	url = https://github.com/aufam/stm32_modbus
+[submodule "Middlewares/Third_Party/delameta"]
+	path = Middlewares/Third_Party/delameta
+	url = https://github.com/aufam/delameta/
+[submodule "Middlewares/Third_Party/boost_preprocessor"]
+	path = Middlewares/Third_Party/boost_preprocessor
+	url = https://github.com/boostorg/preprocessor
+[submodule "Middlewares/Third_Party/fmt"]
+	path = Middlewares/Third_Party/fmt
+	url = https://github.com/fmtlib/fmt.git

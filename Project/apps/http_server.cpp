@@ -1,27 +1,39 @@
-#include "main.hpp"
-#include "wizchip/http/server.h"
-#include "wizchip/http/client.h"
-#include "etl/heap.h"
+#include <apps/app.h>
+#include <delameta/http/server.h>
+#include <delameta/http/client.h>
+#include <delameta/tcp/server.h>
+#include <delameta/tcp/client.h>
+#include <delameta/debug.h>
+#include <etl/async.h>
 
 using namespace Project;
-using namespace Project::etl::literals;
-using namespace Project::wizchip::http;
-using Project::etl::mv;
+using namespace Project::delameta::http;
+using delameta::Stream;
+using delameta::URL;
+using delameta::Error;
+using delameta::info;
+using etl::Ref;
+using etl::Ok;
+using etl::Err;
 
 // define some json rules for some http classes
-JSON_DEFINE(Project::wizchip::http::Server::Router, 
+JSON_DEFINE(Server::Router, 
     JSON_ITEM("methods", methods), 
     JSON_ITEM("path", path)
 )
 
-JSON_DEFINE(Project::wizchip::http::Server::Error, 
+JSON_DEFINE(Server::Error, 
     JSON_ITEM("err", what)
 )
 
-JSON_DEFINE(Project::wizchip::URL, 
+JSON_DEFINE(URL, 
+    JSON_ITEM("url", url), 
+    JSON_ITEM("protocol", protocol), 
     JSON_ITEM("host", host), 
     JSON_ITEM("path", path), 
-    JSON_ITEM("queries", queries)
+    JSON_ITEM("full_path", full_path), 
+    JSON_ITEM("queries", queries),
+    JSON_ITEM("fragment", fragment)
 )
 
 // example custom struct with json
@@ -42,11 +54,11 @@ struct Bar {
 
 template<>
 auto Server::convert_string_into(std::string_view str) -> Server::Result<Bar> {
-    return etl::Ok(Bar{str.size()});
+    return Ok(Bar{str.size()});
 }
 
 template<>
-void Server::process_result(Bar& bar, const Request&, Response& res) {
+void Server::process_result(Bar& bar, const RequestReader&, ResponseWriter& res) {
     res.body = "Bar{" + std::to_string(bar.num) + "}";
     res.headers["Content-Type"] = "text/plain";
 }
@@ -54,36 +66,40 @@ void Server::process_result(Bar& bar, const Request&, Response& res) {
 // example JWT dependency injection
 static const char* const access_token = "Bearer 1234";
 
-static auto get_token(const Request& req, Response&) -> Server::Result<std::string_view> {
+static auto get_token(const RequestReader& req, ResponseWriter&) -> Server::Result<std::string_view> {
     std::string_view token = "";
-    if (req.headers.has("Authentication")) {
-        token = req.headers["Authentication"];
-    } else if (req.headers.has("authentication")) {
-        token = req.headers["authentication"];
+    auto it = req.headers.find("Authentication");
+    if (it == req.headers.end()) {
+        it = req.headers.find("authentication");
+    } 
+    if (it != req.headers.end()) {
+        token = it->second;
     } else {
-        return etl::Err(Server::Error{StatusUnauthorized, "No authentication provided"});
+        return Err(Server::Error{StatusUnauthorized, "No authentication provided"});
     }
     if (token == access_token) {
-        return etl::Ok(token);
+        return Ok(token);
     } else {
-        return etl::Err(Server::Error{StatusUnauthorized, "Token doesn't match"});
+        return Err(Server::Error{StatusUnauthorized, "Token doesn't match"});
     }
-};
+}
+
+Server http_server;
 
 // assign http_server to main function
-APP(http_server) {
-    static Server app;
+APP_ASYNC(http_server) {
+    Server& app = http_server;
 
-    // example: set additional global headers
-    app.global_headers["Server"] = [](const Request&, const Response&) { 
-        return "stm32-wizchip/" WIZCHIP_VERSION; 
-    };
-
-    // example: show response time in the header
+    // show response time in the response header
     app.show_response_time = true;
 
-    // example: set custom error handler
-    app.error_handler = [](Server::Error err, const Request&, Response& res) {
+    app.logger = [](const std::string& ip, const RequestReader& req, const ResponseWriter& res) {
+        std::string msg = ip + " " + std::string(req.method) + " " + req.url.path + " " + std::to_string(res.status) + " " + res.status_string;
+        DBG(info, msg);
+    };
+
+    // example custom handler: jsonify Server::Error
+    app.error_handler = [](Server::Error err, const RequestReader&, ResponseWriter& res) {
         res.status = err.status;
         res.body = etl::json::serialize(err);
         res.headers["Content-Type"] = "application/json";
@@ -91,14 +107,14 @@ APP(http_server) {
 
     // example: print hello
     app.Get("/hello", {}, 
-    []() -> const char* {
-        return "Hello world from stm32-wizchip/" WIZCHIP_VERSION;
+    []() {
+        return "Hello world from delameta/" DELAMETA_VERSION;
     });
 
-    // example: trigger system panic
-    app.Get("/panic", std::tuple{arg::arg("msg")}, 
-    [](std::string msg) { 
-        panic(msg.c_str()); 
+    // example: print hello with msg
+    app.Post("/hello", std::tuple{arg::json_item("msg")}, 
+    [](std::string msg) {
+        return "Hello world " + msg;
     });
 
     // example: 
@@ -144,62 +160,66 @@ APP(http_server) {
         }
     });
 
-    // example: print FreeRTOS heap status as Map (it will be json serialized)
-    app.Get("/heap", {},
-    []() -> etl::Map<const char*, size_t> {
-        return {
-            {"freeSize", etl::heap::freeSize},
-            {"totalSize", etl::heap::totalSize},
-            {"minimumEverFreeSize", etl::heap::minimumEverFreeSize}
-        };
-    });
-
     // example: print all routes of this app as json list
     app.Get("/routes", {},
-    []() -> etl::Ref<const etl::LinkedList<Server::Router>> {
+    [&]() -> Ref<const std::list<Server::Router>> {
         return etl::ref_const(app.routers);
     });
 
     // example: print all headers
     app.Get("/headers", std::tuple{arg::headers},
-    [](etl::Ref<const etl::UnorderedMap<std::string, std::string>> headers) {
+    [](Ref<const decltype(RequestReader::headers)> headers) {
         return headers;
     });
 
     // example: print all queries
     app.Get("/queries", std::tuple{arg::queries},
-    [](etl::Ref<const etl::UnorderedMap<std::string, std::string>> queries) {
+    [](Ref<const decltype(URL::queries)> queries) {
         return queries;
     });
 
     // example: print url
     app.Get("/url", std::tuple{arg::url},
-    [](etl::Ref<const wizchip::URL> url) {
+    [](Ref<const URL> url) {
         return url;
     });
 
+    // example: print url
+    app.Get("/resolve_url", std::tuple{arg::arg("url")},
+    [](std::string url) {
+        return URL(url);
+    });
+
     // example: redirect to the given path
-    app.route("/redirect", {"GET", "POST", "PUT", "PATCH"}, std::tuple{arg::method, arg::headers, arg::body, arg::arg("path")}, 
-    []( std::string method, 
-        etl::Ref<const etl::UnorderedMap<std::string, std::string>> headers, 
-        std::string body, 
-        std::string path
-    ) -> Server::Result<Response> {
-        return request(method, path, {.headers=*headers, .body=mv | body})
-            .wait(1s)
-            .except([](osStatus_t) {
-                return Server::Error{StatusRequestTimeout, "timeout"};
-            });
+    app.route("/redirect", {"GET", "POST", "PUT", "PATCH", "HEAD", "TRACE", "DELETE", "OPTIONS"}, 
+    std::tuple{arg::request, arg::arg("url")}, 
+    [](Ref<const RequestReader> req, std::string url_str) -> Server::Result<void> {
+        URL url = url_str;
+        info(FL, url.host);
+        using TCPClient = delameta::tcp::Client;
+        return TCPClient::New(FL, {url.host}).and_then([&](TCPClient cli) {
+            RequestWriter data = *req;
+            data.url = url;
+            info(FL, "sending response");
+            return delameta::http::request(cli, std::move(data));
+        });
     });
 
-    app.Get("/eth_max_buf", std::tuple{arg::default_val("socket_number", 0)},
-    [](int socket_number) -> Server::Result<uint16_t> {
-        if (socket_number >= _WIZCHIP_SOCK_NUM_) {
-            return etl::Err(Server::Error{StatusBadRequest, "out of range"});
-        } else {
-            return etl::Ok(getSn_TxMAX(socket_number));
+    app.Delete("/delete_route", std::tuple{arg::arg("path")},
+    [&](std::string path) -> Server::Result<void> {
+        auto it = std::find_if(app.routers.begin(), app.routers.end(), [&path](Server::Router& router) {
+            return router.path == path;
+        });
+
+        if (it == app.routers.end()) {
+            return Err(Server::Error{StatusBadRequest, "path " + path + " not found"});
         }
+
+        app.routers.erase(it);
+        return Ok();
     });
 
-    app.start({.port=5000, .number_of_socket=4});
+    auto tcp_server = delameta::tcp::Server::New(FL, {.host="0.0.0.0:5000", .max_socket=1}).expect(::panic);
+    app.bind(tcp_server);
+    tcp_server.start();
 }
