@@ -1,11 +1,10 @@
 #include <fmt/format.h>
 #include <delameta/debug.h>
-#include <delameta/file_descriptor.h>
+#include <usart.h>
+
+#define huart &huart1
 
 using namespace Project;
-using delameta::FileDescriptor;
-
-extern FileDescriptor* fd_debug;
 
 static const char* get_file_name_only(const char* file) {
     const char* filename = strrchr((const char*)file, '/');
@@ -15,12 +14,14 @@ static const char* get_file_name_only(const char* file) {
     return filename ? filename + 1 : (const char*)file; 
 }
 
-[[export, override_weak]]
+[[override_weak]]
 void delameta::info(const char* file, int line, const std::string& msg) {
-    if (fd_debug) fd_debug->write(fmt::format("{}:{} INFO: {}\n", get_file_name_only(file), line, msg));
+    auto text = fmt::format("{}:{} INFO: {}\n", get_file_name_only(file), line, msg);
+    HAL_UART_Transmit(huart, (const uint8_t*)text.c_str(), text.size(), HAL_MAX_DELAY);
 }
 
-[[export, override_weak]]
+[[override_weak]]
 void delameta::warning(const char* file, int line, const std::string& msg) {
-    if (fd_debug) fd_debug->write(fmt::format("{}:{} WARNING: {}\n", get_file_name_only(file), line, msg));
+    auto text = fmt::format("{}:{} WARNING: {}\n", get_file_name_only(file), line, msg);
+    HAL_UART_Transmit(huart, (const uint8_t*)text.c_str(), text.size(), HAL_MAX_DELAY);
 }

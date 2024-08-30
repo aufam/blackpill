@@ -1,7 +1,7 @@
 #pragma once
 #include <fmt/format.h>
 #include <delameta/debug.h>
-#include <delameta/file_descriptor.h>
+#include <delameta/stream.h>
 #include <etl/string_view.h>
 #include <etl/time.h>
 #include <functional>
@@ -19,7 +19,7 @@ namespace Project {
         template <typename F>
         auto route_async(const char* name, F&& handler);
 
-        void execute(delameta::FileDescriptor& fd, etl::StringView cmd);
+        void execute(delameta::Descriptor& fd, etl::StringView cmd);
 
         std::unordered_map<const char*, HandlerFunction> routers = {};
         std::unordered_map<const char*, HandlerFunction> routers_async = {};
@@ -83,7 +83,7 @@ template <typename T>
 T Project::Terminal::serialize_arg(etl::StringView sv) {
     if constexpr (std::is_integral_v<T>) {
         return sv.to_int();
-    } else if constexpr (std::is_floating_point_v<float>) {
+    } else if constexpr (std::is_floating_point_v<T>) {
         return sv.to_float();
     } else if constexpr (std::is_same_v<T, etl::StringView>) {
         return sv;

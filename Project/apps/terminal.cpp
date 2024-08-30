@@ -1,35 +1,42 @@
 #include <apps/app.h>
 #include <apps/terminal.h>
+#include <delameta/endpoint.h>
 #include <etl/async.h>
 #include <etl/heap.h>
 #include <etl/placeholder.h>
 
 using namespace Project;
-using delameta::FileDescriptor;
+using namespace etl::literals;
+using delameta::Descriptor;
+using delameta::Endpoint;
+using delameta::info;
 using etl::Err;
 using etl::Ok;
 
 [[export]]
 Terminal terminal;
 
-[[export]]
-FileDescriptor* fd_debug = nullptr;
-
-static void terminal_work(const char* port, bool as_debug) {
-    auto fd = FileDescriptor::Open(FL, port, 0).expect(::panic);
-    if (as_debug) fd_debug = &fd;
-
+static void terminal_work(const char* uri) {
+    auto ep = Endpoint::Open(uri).expect(::panic);
     for (;;) {
-        fd.wait_until_ready();
-        auto data = TRY_OR(fd.read(), continue);
+        auto data = TRY_OR(ep.read(), continue);
+
+        DBG_VAL(info, terminal.routers.size());
+        for (auto ch: data) {
+            DBG_VAL(info, ch);
+        }
 
         auto sv = etl::string_view(data.data(), data.size());
-        for (auto cmd: sv.split("\n")) terminal.execute(fd, cmd);
+        for (auto cmd: sv.split("\n")) terminal.execute(ep, cmd);
     }
 }
 
 APP(terminal) {
     terminal.route("tasks", &etl::task::resources);
+
+    terminal.route("echo", [](std::string_view sv) {
+        return sv;
+    });
 
     terminal.route("heap", etl::placeholder::retval = std::unordered_map<const char*, size_t> {
         {"freeSize", etl::heap::freeSize},
@@ -37,11 +44,15 @@ APP(terminal) {
         {"totalSize", etl::heap::totalSize},
     });
 
-    etl::async(&terminal_work, "/usb", false);
-    etl::async(&terminal_work, "/uart1", true);
+    terminal.route_async("async_test", []() {
+        etl::time::sleep(1s);
+    });
+
+    etl::async(&terminal_work, "serial:///usb");
+    etl::async(&terminal_work, "serial:///uart1?baud=9600");
 }
 
-static void process_execution_result(FileDescriptor& fd, const Terminal::Result& result, etl::StringView name) {
+static void process_execution_result(Descriptor& fd, const Terminal::Result& result, etl::StringView name) {
     auto name_sv = std::string_view(name.data(), name.len());
 
     if (result.is_ok()) {
@@ -60,7 +71,7 @@ static void process_execution_result(FileDescriptor& fd, const Terminal::Result&
     }
 }
 
-void Terminal::execute(FileDescriptor& fd, etl::StringView cmd) {
+void Terminal::execute(Descriptor& fd, etl::StringView cmd) {
     auto args = cmd.split(" ");
     for (auto &[name, handler]: routers) if (args[0] == name) {
         return process_execution_result(fd, handler(args), name);

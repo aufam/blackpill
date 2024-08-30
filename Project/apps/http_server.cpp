@@ -1,28 +1,26 @@
 #include <apps/app.h>
-#include <delameta/http/server.h>
-#include <delameta/http/client.h>
-#include <delameta/tcp/server.h>
-#include <delameta/tcp/client.h>
+#include <delameta/http/http.h>
+#include <delameta/tcp.h>
 #include <delameta/debug.h>
 #include <etl/async.h>
 
 using namespace Project;
 using namespace Project::delameta::http;
+using delameta::TCP;
 using delameta::Stream;
 using delameta::URL;
-using delameta::Error;
 using delameta::info;
 using etl::Ref;
 using etl::Ok;
 using etl::Err;
 
 // define some json rules for some http classes
-JSON_DEFINE(Server::Router, 
+JSON_DEFINE(Router, 
     JSON_ITEM("methods", methods), 
     JSON_ITEM("path", path)
 )
 
-JSON_DEFINE(Server::Error, 
+JSON_DEFINE(Error, 
     JSON_ITEM("err", what)
 )
 
@@ -53,12 +51,12 @@ struct Bar {
 };
 
 template<>
-auto Server::convert_string_into(std::string_view str) -> Server::Result<Bar> {
+auto Http::convert_string_into(std::string_view str) -> Result<Bar> {
     return Ok(Bar{str.size()});
 }
 
 template<>
-void Server::process_result(Bar& bar, const RequestReader&, ResponseWriter& res) {
+void Http::process_result(Bar& bar, const RequestReader&, ResponseWriter& res) {
     res.body = "Bar{" + std::to_string(bar.num) + "}";
     res.headers["Content-Type"] = "text/plain";
 }
@@ -66,7 +64,7 @@ void Server::process_result(Bar& bar, const RequestReader&, ResponseWriter& res)
 // example JWT dependency injection
 static const char* const access_token = "Bearer 1234";
 
-static auto get_token(const RequestReader& req, ResponseWriter&) -> Server::Result<std::string_view> {
+static auto get_token(const RequestReader& req, ResponseWriter&) -> Result<std::string_view> {
     std::string_view token = "";
     auto it = req.headers.find("Authentication");
     if (it == req.headers.end()) {
@@ -75,20 +73,20 @@ static auto get_token(const RequestReader& req, ResponseWriter&) -> Server::Resu
     if (it != req.headers.end()) {
         token = it->second;
     } else {
-        return Err(Server::Error{StatusUnauthorized, "No authentication provided"});
+        return Err(Error{StatusUnauthorized, "No authentication provided"});
     }
     if (token == access_token) {
         return Ok(token);
     } else {
-        return Err(Server::Error{StatusUnauthorized, "Token doesn't match"});
+        return Err(Error{StatusUnauthorized, "Token doesn't match"});
     }
 }
 
-Server http_server;
+Http http_server;
 
 // assign http_server to main function
 APP_ASYNC(http_server) {
-    Server& app = http_server;
+    Http& app = http_server;
 
     // show response time in the response header
     app.show_response_time = true;
@@ -99,7 +97,7 @@ APP_ASYNC(http_server) {
     };
 
     // example custom handler: jsonify Server::Error
-    app.error_handler = [](Server::Error err, const RequestReader&, ResponseWriter& res) {
+    app.error_handler = [](Error err, const RequestReader&, ResponseWriter& res) {
         res.status = err.status;
         res.body = etl::json::serialize(err);
         res.headers["Content-Type"] = "application/json";
@@ -121,9 +119,9 @@ APP_ASYNC(http_server) {
     // - get request param (in this case the body as string_view)
     // - possible error return value
     app.Post("/body", std::tuple{arg::body},
-    [](std::string_view body) -> Server::Result<std::string_view> {
+    [](std::string_view body) -> Result<std::string_view> {
         if (body.empty()) {
-            return etl::Err(Server::Error{StatusBadRequest, "Body is empty"});
+            return etl::Err(Error{StatusBadRequest, "Body is empty"});
         } else {
             return etl::Ok(body);
         }
@@ -162,7 +160,7 @@ APP_ASYNC(http_server) {
 
     // example: print all routes of this app as json list
     app.Get("/routes", {},
-    [&]() -> Ref<const std::list<Server::Router>> {
+    [&]() -> Ref<const std::list<Router>> {
         return etl::ref_const(app.routers);
     });
 
@@ -193,33 +191,30 @@ APP_ASYNC(http_server) {
     // example: redirect to the given path
     app.route("/redirect", {"GET", "POST", "PUT", "PATCH", "HEAD", "TRACE", "DELETE", "OPTIONS"}, 
     std::tuple{arg::request, arg::arg("url")}, 
-    [](Ref<const RequestReader> req, std::string url_str) -> Server::Result<void> {
+    [](Ref<const RequestReader> req, std::string url_str) -> Result<void> {
         URL url = url_str;
-        info(FL, url.host);
-        using TCPClient = delameta::tcp::Client;
-        return TCPClient::New(FL, {url.host}).and_then([&](TCPClient cli) {
-            RequestWriter data = *req;
-            data.url = url;
-            info(FL, "sending response");
-            return delameta::http::request(cli, std::move(data));
-        });
+        auto session = TRY(TCP::Open(FL, {url.host}));
+        RequestWriter data = *req;
+        data.url = url;
+        info(FL, "sending response");
+        return delameta::http::request(session, std::move(data));
     });
 
     app.Delete("/delete_route", std::tuple{arg::arg("path")},
-    [&](std::string path) -> Server::Result<void> {
-        auto it = std::find_if(app.routers.begin(), app.routers.end(), [&path](Server::Router& router) {
+    [&](std::string path) -> Result<void> {
+        auto it = std::find_if(app.routers.begin(), app.routers.end(), [&path](Router& router) {
             return router.path == path;
         });
 
         if (it == app.routers.end()) {
-            return Err(Server::Error{StatusBadRequest, "path " + path + " not found"});
+            return Err(Error{StatusBadRequest, "path " + path + " not found"});
         }
 
         app.routers.erase(it);
         return Ok();
     });
 
-    auto tcp_server = delameta::tcp::Server::New(FL, {.host="0.0.0.0:5000", .max_socket=1}).expect(::panic);
+    auto tcp_server = delameta::Server<TCP>();
     app.bind(tcp_server);
-    tcp_server.start();
+    tcp_server.start(FL, {.host="0.0.0.0:5000", .max_socket=1}).expect(::panic);
 }
