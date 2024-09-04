@@ -194,8 +194,8 @@ APP_ASYNC(http_server) {
     [](Ref<const RequestReader> req, std::string url_str) -> Result<ResponseReader> {
         URL url = url_str;
         auto session = TRY(TCP::Open(FL, {url.host}));
-        RequestWriter data = *req;
-        data.url = url;
+        RequestWriter req_writer = *req;
+        req_writer.url = std::move(url);
         return delameta::http::request(session, std::move(data));
     });
 
