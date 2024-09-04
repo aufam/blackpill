@@ -196,7 +196,7 @@ APP_ASYNC(http_server) {
         auto session = TRY(TCP::Open(FL, {url.host}));
         RequestWriter req_writer = *req;
         req_writer.url = std::move(url);
-        return delameta::http::request(session, std::move(data));
+        return delameta::http::request(session, std::move(req_writer));
     });
 
     app.Delete("/delete_route", std::tuple{arg::arg("path")},
