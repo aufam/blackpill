@@ -191,12 +191,11 @@ APP_ASYNC(http_server) {
     // example: redirect to the given path
     app.route("/redirect", {"GET", "POST", "PUT", "PATCH", "HEAD", "TRACE", "DELETE", "OPTIONS"}, 
     std::tuple{arg::request, arg::arg("url")}, 
-    [](Ref<const RequestReader> req, std::string url_str) -> Result<void> {
+    [](Ref<const RequestReader> req, std::string url_str) -> Result<ResponseReader> {
         URL url = url_str;
         auto session = TRY(TCP::Open(FL, {url.host}));
         RequestWriter data = *req;
         data.url = url;
-        info(FL, "sending response");
         return delameta::http::request(session, std::move(data));
     });
 
