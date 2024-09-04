@@ -166,19 +166,19 @@ APP_ASYNC(http_server) {
 
     // example: print all headers
     app.Get("/headers", std::tuple{arg::headers},
-    [](Ref<const decltype(RequestReader::headers)> headers) {
+    [](decltype(RequestReader::headers) headers) {
         return headers;
     });
 
     // example: print all queries
     app.Get("/queries", std::tuple{arg::queries},
-    [](Ref<const decltype(URL::queries)> queries) {
+    [](decltype(URL::queries) queries) {
         return queries;
     });
 
     // example: print url
     app.Get("/url", std::tuple{arg::url},
-    [](Ref<const URL> url) {
+    [](URL url) {
         return url;
     });
 
@@ -216,5 +216,5 @@ APP_ASYNC(http_server) {
 
     auto tcp_server = delameta::Server<TCP>();
     app.bind(tcp_server);
-    tcp_server.start(FL, {.host="0.0.0.0:5000", .max_socket=1}).expect(::panic);
+    tcp_server.start(FL, {.host="0.0.0.0:5000", .max_socket=2}).expect(::panic);
 }

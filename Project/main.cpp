@@ -32,16 +32,21 @@ extern "C" void project_init() {
     App::run();
 }
 
-extern UART_HandleTypeDef huart1;
-
 extern "C" void panic(const char* msg) {
     etl::task::terminate(); // terminate all tasks
     taskDISABLE_INTERRUPTS();
 	__disable_irq();
 
+    const uint8_t title[] = "PANIC: ";
+    const uint8_t line_feed = '\n';
+    const auto msg_len = ::strlen(msg);
+    extern UART_HandleTypeDef huart1;
+
     for (;;) {
-        HAL_UART_Transmit(&huart1, (const uint8_t*)msg, ::strlen(msg), HAL_MAX_DELAY);
-        for (int i = 0; i < 100'000'000; ++i);
+        HAL_UART_Transmit(&huart1, title, sizeof(title) - 1, HAL_MAX_DELAY);
+        HAL_UART_Transmit(&huart1, (const uint8_t*)msg, msg_len, HAL_MAX_DELAY);
+        HAL_UART_Transmit(&huart1, &line_feed, 1, HAL_MAX_DELAY);
+        for (int i = 0; i < 10'000'000; ++i);
     }
 }
 

@@ -52,6 +52,38 @@ Template project for STM32 blackpill Development
 3. SPI1 (PA5, PA6, PA7)
 4. WIZCHIP 3300 (SPI=SPI1, CS=PA4, RST=PA1)
 
+### Default Ethernet configuration
+1. IP: `10.20.30.2`
+2. Gateway: `10.20.30.1`
+3. DNS: `10.20.30.1`
+
+You can change the configuration in [main.cpp](Project/main.cpp)
+
+### [Terminal](Project/apps/terminal.cpp)
+Provides a terminal-based application for handling various commands 
+and communication protocols.
+
+Example terminal commands:
+1. `tasks`
+    * returns: number of available tasks
+2. `echo ${1}`
+    * returns: the first argument
+3. `heap`
+    * returns: FreeRTOS heap information
+4. `async_test`
+    * description: example for non blocking execution
+    * returns: Ok if the tasks is available otherwise error
+5. `add ${1} ${2}`
+    * description: add two integers
+6. `div ${1} ${2}`
+    * description: add two integers
+    * returns: `${1}` divided by `${2}` if `${2}` is not zero, otherwise zero division error
+
+You can access the terminal via:
+1. USB Serial, usually through `/dev/ttyACM0`
+2. UART
+3. UDP through `10.20.30.2:12345`
+
 ### CubeMX Integration
 You can modify the CubeMX-generated code by editing the ioc file and regenerating the code as needed using STM32CubeMX. 
 This allows customization of hardware configurations and peripheral setups.

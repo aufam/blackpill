@@ -21,11 +21,6 @@ static void terminal_work(const char* uri) {
     for (;;) {
         auto data = TRY_OR(ep.read(), continue);
 
-        DBG_VAL(info, terminal.routers.size());
-        for (auto ch: data) {
-            DBG_VAL(info, ch);
-        }
-
         auto sv = etl::string_view(data.data(), data.size());
         for (auto cmd: sv.split("\n")) terminal.execute(ep, cmd);
     }
@@ -34,22 +29,38 @@ static void terminal_work(const char* uri) {
 APP(terminal) {
     terminal.route("tasks", &etl::task::resources);
 
-    terminal.route("echo", [](std::string_view sv) {
-        return sv;
-    });
-
     terminal.route("heap", etl::placeholder::retval = std::unordered_map<const char*, size_t> {
         {"freeSize", etl::heap::freeSize},
         {"minimumEverFreeSize", etl::heap::minimumEverFreeSize},
         {"totalSize", etl::heap::totalSize},
     });
 
+    // example echo the input
+    terminal.route("echo", [](std::string_view sv) {
+        return sv;
+    });
+
+    // example non blocking
     terminal.route_async("async_test", []() {
         etl::time::sleep(1s);
     });
 
+    // example addition
+    terminal.route("add", [](int a, int b) {
+        return a + b;
+    });
+
+    // example division with custom error
+    terminal.route("div", [](float num, float denum) -> etl::Result<float, const char*> {
+        if (denum == 0.f) {
+            return Err("Zero division error");
+        } 
+        return Ok(num / denum);
+    });
+
     etl::async(&terminal_work, "serial:///usb");
     etl::async(&terminal_work, "serial:///uart1?baud=9600");
+    etl::async(&terminal_work, "udp://0.0.0.0:12345/?as-server");
 }
 
 static void process_execution_result(Descriptor& fd, const Terminal::Result& result, etl::StringView name) {
