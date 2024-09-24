@@ -1,4 +1,5 @@
 #include <apps/app.h>
+#include <apps/ip_config.h>
 #include <etl/async.h>
 #include <etl/string_view.h>
 #include <main.h>
@@ -18,16 +19,25 @@ extern "C" {
     );
 }
 
-static const uint8_t mac[] = {0x00, 0x08, 0xdc, 0xff, 0xee, 0xdd};
-static const uint8_t ip[] = {10, 20, 30, 2};
-static const uint8_t sn[] = {255, 255, 255, 0};
-static const uint8_t gw[] = {10, 20, 30, 1};
-static const uint8_t dns[] = {10, 20, 30, 1};
+extern mac_t eeprom_read_mac();
+extern ip_t eeprom_read_ip();
+extern ip_t eeprom_read_sn();
+extern ip_t eeprom_read_gw();
+extern ip_t eeprom_read_dns();
 
 extern "C" void project_init() {
     etl::task::init();
     delameta_stm32_hal_init();
-    delameta_stm32_hal_wizchip_set_net_info(mac, ip, sn, gw, dns);
+
+    auto mac = eeprom_read_mac();
+    auto ip  = eeprom_read_ip();
+    auto sn  = eeprom_read_sn();
+    auto gw  = eeprom_read_gw();
+    auto dns = eeprom_read_dns();
+    delameta_stm32_hal_wizchip_set_net_info(
+        mac.value.data(), ip.value.data(), sn.value.data(), gw.value.data(), dns.value.data()
+    );
+
     delameta_stm32_hal_wizchip_init();
     App::run();
 }

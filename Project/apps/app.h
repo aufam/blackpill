@@ -1,7 +1,5 @@
 #pragma once
-#ifndef APP_BUFFER_SIZE
-#define APP_BUFFER_SIZE 64
-#endif
+#include <array>
 
 extern "C" void panic(const char* msg);
 

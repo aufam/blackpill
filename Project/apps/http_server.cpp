@@ -191,12 +191,14 @@ APP_ASYNC(http_server) {
     // example: redirect to the given path
     app.route("/redirect", {"GET", "POST", "PUT", "PATCH", "HEAD", "TRACE", "DELETE", "OPTIONS"}, 
     std::tuple{arg::request, arg::arg("url")}, 
-    [](Ref<const RequestReader> req, std::string url_str) -> Result<ResponseReader> {
-        URL url = url_str;
-        auto session = TRY(TCP::Open(FL, {url.host}));
-        RequestWriter req_writer = *req;
-        req_writer.url = std::move(url);
-        return delameta::http::request(session, std::move(req_writer));
+    [](Ref<const RequestReader> req, std::string url) -> Result<ResponseWriter> {
+        RequestWriter req_w = *req;
+        req_w.url = url;
+
+        auto res = TRY(request(std::move(req_w)));
+        ResponseWriter res_w = std::move(res);
+
+        return Ok(std::move(res_w));
     });
 
     app.Delete("/delete_route", std::tuple{arg::arg("path")},
@@ -215,5 +217,5 @@ APP_ASYNC(http_server) {
 
     auto tcp_server = delameta::Server<TCP>();
     app.bind(tcp_server);
-    tcp_server.start(FL, {.host="0.0.0.0:5000", .max_socket=2}).expect(::panic);
+    tcp_server.start(FL, {.host="0.0.0.0:80", .max_socket=4}).expect(::panic);
 }

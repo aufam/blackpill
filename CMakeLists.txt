@@ -20,7 +20,7 @@ set(CMAKE_C_STANDARD 11)
 # user defines
 add_definitions(
     -DAPP_BUFFER_SIZE=64
-    -DETL_ASYNC_N_CHANNELS=8
+    -DETL_ASYNC_N_CHANNELS=10
     -DETL_ASYNC_TASK_THREAD_SIZE=2048
     -DETL_ASYNC_TASK_SENDER_MEMPOOL_SIZE=36
 	-DDELAMETA_STM32_USE_HAL_UART1
@@ -132,6 +132,7 @@ target_link_libraries(${PROJECT_NAME}.elf boost_preprocessor)
 # add fmt
 set(FMT_USE_EXCEPTIONS OFF CACHE BOOL "" FORCE)
 set(FMT_USE_RTTI OFF CACHE BOOL "" FORCE)
+set(FMT_USE_FCNTL OFF CACHE BOOL "" FORCE)
 add_subdirectory(Middlewares/Third_Party/fmt)
 target_link_libraries(${PROJECT_NAME}.elf fmt)
 

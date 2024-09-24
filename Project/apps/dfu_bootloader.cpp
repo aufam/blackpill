@@ -13,14 +13,14 @@ using etl::Result;
 
 #define TIM_TICK TIM11
 
-static void jumpToBootLoader();
+static void dfu_bootloader();
 extern Terminal terminal;
 
-APP(jumpToBootLoader) {
-    terminal.route("jumpToBootLoader", []() -> Result<const char*, const char*> {
+APP(dfu_bootloader) {
+    terminal.route("dfu-bootloader", []() -> Result<const char*, const char*> {
         auto future = etl::async([]() {
             etl::time::sleep(5s);
-            jumpToBootLoader();
+            dfu_bootloader();
         });
         if (future.valid()) {
             return Ok("jump to boot loader in 5s");
@@ -51,7 +51,7 @@ struct boot_vectable_ {
 #define BOOTVTAB	((volatile struct boot_vectable_ *)BOOT_ADDR)
 extern "C" USBD_HandleTypeDef hUsbDeviceFS;
 
-void jumpToBootLoader() {
+void dfu_bootloader() {
     // stop USB 
 	#ifdef HAL_PCD_MODULE_ENABLED
 	USBD_Stop(&hUsbDeviceFS);

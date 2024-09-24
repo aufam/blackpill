@@ -35,6 +35,14 @@ APP(terminal) {
         {"totalSize", etl::heap::totalSize},
     });
 
+    terminal.route("reboot", []() {
+        etl::async([]() {
+            etl::time::sleep(3s);
+            ::panic("reboot");
+        });
+        return "reboot in 3s";
+    });
+
     // example echo the input
     terminal.route("echo", [](std::string_view sv) {
         return sv;

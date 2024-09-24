@@ -44,13 +44,19 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 512K
+  RAM     (xrw)   : ORIGIN = 0x20000000,   LENGTH = 128K
+  FLASH   (rx)    : ORIGIN = 0x08000000,   LENGTH = 512K - 128K
+  EEPROM  (rx)    : ORIGIN = 0x08060000,   LENGTH = 128K
 }
 
 /* Sections */
 SECTIONS
 {
+  .eeprom :
+  {
+    KEEP(*(.eeprom))
+  } >EEPROM
+
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :
   {
