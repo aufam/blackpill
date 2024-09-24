@@ -127,8 +127,6 @@ APP_ASYNC(my_async_app) {
 ### Clone
 ```bash
 git clone https://github.com/aufam/blackpill.git --recurse
-cmake -B build
-cmake --build build
 ```
 
 ### Build
