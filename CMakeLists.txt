@@ -45,7 +45,6 @@ elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
     add_compile_options(-Ofast -g)
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
     message(STATUS "Maximum optimization for size")
-    add_compile_options(-Os)
 else ()
     message(STATUS "Minimal optimization, debug info included")
     add_compile_options(-Og -g)
@@ -71,7 +70,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix -Wno-attributes")
 
 # defines
-add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32F411xE)
+add_definitions(-DUSE_HAL_DRIVER -DSTM32F411xE)
 
 # library
 add_link_options(-specs=nano.specs -lm -lc)

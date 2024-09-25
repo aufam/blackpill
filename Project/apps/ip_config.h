@@ -10,6 +10,12 @@ namespace Project {
     struct ip_t {
         std::array<uint8_t, 4> value;
     };
+
+    inline constexpr mac_t default_mac {{0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff}};
+    inline constexpr ip_t  default_ip  {{10, 20, 30, 2}};
+    inline constexpr ip_t  default_sn  {{255, 255, 255, 0}};
+    inline constexpr ip_t  default_gw  {{10, 20, 30, 1}};
+    inline constexpr ip_t  default_dns {{10, 20, 30, 1}};
 }
 
 template <> struct fmt::formatter<Project::mac_t> {
@@ -18,15 +24,15 @@ template <> struct fmt::formatter<Project::mac_t> {
     template <typename FormatContext>
     inline auto format(const Project::mac_t& m, FormatContext& ctx) const {
         return fmt::format_to(ctx.out(), 
-            "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", 
+            "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}", 
             m.value[0], m.value[1], m.value[2], m.value[3], m.value[4], m.value[5]
         );
     }
 };
 
 template <> inline size_t 
-Project::etl::json::size_max(const Project::mac_t& m) {
-    return size_max(m.value);
+Project::etl::json::size_max(const Project::mac_t&) {
+    return 12 + 7;
 }
 template <> inline std::string 
 Project::etl::json::serialize(const Project::mac_t& m) {

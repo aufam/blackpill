@@ -32,11 +32,11 @@ JSON_TRAITS(
 )
 
 const __IO EEPROM eeprom __attribute__((section(".eeprom"))) = {
-    .mac = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff},
-    .ip  = {10, 20, 30, 2},
-    .sn  = {255, 255, 255, 0},
-    .gw  = {10, 20, 30, 1},
-    .dns = {10, 20, 30, 1},
+    .mac = default_mac,
+    .ip  = default_ip,
+    .sn  = default_sn,
+    .gw  = default_gw,
+    .dns = default_dns,
 };
 
 EEPROM eeprom_read() {
